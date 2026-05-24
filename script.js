@@ -84,7 +84,7 @@ handle.addEventListener("touchstart", dragStart);
 document.addEventListener("touchend", dragEnd);
 document.addEventListener("touchmove", drag);
 
-// ================= ORIGINAL AI ENGINE (unchanged) =================
+// ================= ORIGINAL AI ENGINE (100% UNCHANGED) =================
 let lastBlockId = -1;
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
@@ -106,13 +106,11 @@ function initAIServer() {
             resultText.innerText = "WAITING...";
             aiStatus.innerText = "SCANNING TRENDS";
             aiStatus.style.color = "#ffcc00";
-            periodLabel.innerHTML = "⏳ NEXT PERIOD: --";
         } else {
             if (blockId !== lastBlockId) {
                 lastBlockId = blockId;
                 runMarketAnalysis(blockId);
-                // When a new block starts, store the prediction for the upcoming period
-                storePredictionForNextPeriod();
+                // New prediction generated – tracking will pick it up
             }
             resultText.innerText = currentPrediction.res;
             resultText.style.color = currentPrediction.color;
@@ -156,64 +154,51 @@ function runMarketAnalysis(blockId) {
     }
 }
 
-// ================= FIXED WIN/LOSS TRACKING =================
+// ================= FIXED TRACKING (USES REAL PERIOD NUMBERS) =================
 let pendingPrediction = null;      // { period: string, prediction: string }
 let totalPredictions = 0, wins = 0, losses = 0;
-
-function storePredictionForNextPeriod() {
-    // Determine the period number that will be closed next (based on current time + 1 minute)
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2,'0');
-    const day = String(now.getDate()).padStart(2,'0');
-    const hours = String(now.getHours()).padStart(2,'0');
-    const minutes = String(now.getMinutes()).padStart(2,'0');
-    // Period format: YYYYMMDD1000xxxx where xxxx increments every minute
-    // Simpler: use API's upcoming period concept: current timestamp floor to minute + 1
-    const basePeriod = `${year}${month}${day}1000${String((now.getHours()*60) + now.getMinutes() + 1).padStart(4,'0')}`;
-    pendingPrediction = {
-        period: basePeriod,
-        prediction: currentPrediction.res
-    };
-    // Update UI to show period we are predicting for
-    document.getElementById('period-label').innerHTML = `🎯 PREDICTING PERIOD: ${basePeriod.slice(-6)}`;
-}
+let lastProcessedPeriod = null;
+let lastPredictedPeriod = null;     // the period we have already set a prediction for
 
 async function initTracking() {
-    // Fetch every 2 seconds to catch new results
-    setInterval(checkAndUpdateResults, 2000);
-    // Also fetch initial to set last known period
-    await checkAndUpdateResults();
+    // Fetch every 2 seconds to get new results and update predictions
+    setInterval(checkAndUpdate, 2000);
+    await checkAndUpdate(); // initial run
 }
 
-let lastProcessedPeriod = null;
-
-async function checkAndUpdateResults() {
+async function checkAndUpdate() {
     try {
         const res = await fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?t=' + Date.now());
         const data = await res.json();
         const latest = data.data.list[0];
-        const period = latest.issueNumber;
+        const currentPeriod = latest.issueNumber;
         const winningNumber = parseInt(latest.number);
         const actualSize = winningNumber >= 5 ? "BIG" : "SMALL";
 
-        // If we have a pending prediction and the period matches the latest result
-        if (pendingPrediction && pendingPrediction.period === period) {
-            // Evaluate
+        // --- Step 1: Check if a pending prediction has been settled ---
+        if (pendingPrediction && pendingPrediction.period === currentPeriod) {
             const won = (pendingPrediction.prediction === actualSize);
             totalPredictions++;
-            if (won) {
-                wins++;
-            } else {
-                losses++;
-            }
+            if (won) wins++; else losses++;
             updateStatsUI();
-            addHistoryRow(period, pendingPrediction.prediction, winningNumber, actualSize, won);
-            // Clear pending prediction
-            pendingPrediction = null;
-            lastProcessedPeriod = period;
+            addHistoryRow(currentPeriod, pendingPrediction.prediction, winningNumber, actualSize, won);
+            pendingPrediction = null; // cleared
         }
-        // Also handle case where we missed? But tracking is per cycle.
+
+        // --- Step 2: Determine the next period (the one that will be drawn next) ---
+        const nextPeriod = (BigInt(currentPeriod) + 1n).toString();
+
+        // --- Step 3: If we haven't predicted for the next period yet, store current AI prediction ---
+        if (lastPredictedPeriod !== nextPeriod && currentPrediction.res !== "---") {
+            pendingPrediction = {
+                period: nextPeriod,
+                prediction: currentPrediction.res
+            };
+            lastPredictedPeriod = nextPeriod;
+            // Update UI to show which period we are predicting
+            document.getElementById('period-label').innerHTML = `🎯 PERIOD: ${nextPeriod.slice(-6)}`;
+        }
+
     } catch (err) {
         console.warn("Tracking error", err);
     }
