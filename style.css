@@ -215,6 +215,7 @@ body, html {
     font-weight: 700;
 }
 
+/* Fixed table colors - light text on dark background */
 .history-table {
     width: 100%;
     font-size: 11px;
@@ -222,17 +223,31 @@ body, html {
     margin-top: 8px;
 }
 .history-table th {
-    color: #888;
+    color: #aaa !important;
+    background: transparent;
     padding: 8px 0;
     font-weight: 500;
     border-bottom: 1px solid #2a2a35;
 }
 .history-table td {
+    color: #f0f0f0 !important;  /* Bright text for period, pred, num */
     padding: 8px 0;
     border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-.win-badge { color: var(--neon-green); font-weight: 700; }
-.loss-badge { color: var(--loss-red); font-weight: 700; }
+.history-table td:first-child,
+.history-table td:nth-child(2),
+.history-table td:nth-child(3) {
+    color: #ffffff !important;
+    font-weight: 500;
+}
+.win-badge { 
+    color: var(--neon-green) !important; 
+    font-weight: 700;
+}
+.loss-badge { 
+    color: var(--loss-red) !important; 
+    font-weight: 700;
+}
 .footer-note {
     font-size: 8px;
     color: #555;
