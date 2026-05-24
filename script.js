@@ -1,7 +1,7 @@
 const CONFIG = {
     key: "RKXRAKIB",
-    wingoUrl: "https://tkclub2.com/#/home/AllLotteryGames/WinGo?id=1",
-    depositUrl: "https://tkclub2.com/#/wallet/Recharge"
+    wingoUrl: "https://91appt.com/#/saasLottery/WinGo?gameCode=WinGo_30S&lottery=WinGo",
+    depositUrl: "https://91appt.com/#/wallet/Recharge"
 };
 
 // --- AUTH & PERSISTENCE ---
