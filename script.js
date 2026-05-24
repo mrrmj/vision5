@@ -1,6 +1,6 @@
 const CONFIG = {
     key: "RKXRAKIB",
-    wingoUrl: "https://91appt.com/#/saasLottery/WinGo?gameCode=WinGo_30S&lottery=WinGo",
+    wingoUrl: "https://91appt.com/#/saasLottery/WinGo?gameCode=WinGo_1M&lottery=WinGo",
     depositUrl: "https://91appt.com/#/wallet/Recharge"
 };
 
@@ -32,13 +32,11 @@ function showView(id) {
     document.getElementById(id).style.display = 'block';
 }
 
-// --- MINI/MAXIMIZE ---
 function togglePanel(show) {
     document.getElementById('main-box').style.display = show ? 'block' : 'none';
     document.getElementById('mini-logo').style.display = show ? 'none' : 'block';
 }
 
-// --- DEPOSIT & ENGINE TRIGGER ---
 function openDeposit() {
     document.getElementById('game-frame').src = CONFIG.depositUrl;
 }
@@ -49,10 +47,11 @@ function verifyDeposit() {
         document.getElementById('game-frame').src = CONFIG.wingoUrl;
         showView('signal-view');
         initAIServer();
+        initTracking();   // start tracking after AI is ready
     }, 2500);
 }
 
-// --- DRAG LOGIC (RELIABLE) ---
+// --- DRAG LOGIC (unchanged) ---
 const box = document.getElementById("main-box");
 const handle = document.getElementById("drag-handle");
 let active = false, currentX, currentY, initialX, initialY, xOff = 0, yOff = 0;
@@ -85,16 +84,17 @@ handle.addEventListener("touchstart", dragStart);
 document.addEventListener("touchend", dragEnd);
 document.addEventListener("touchmove", drag);
 
-// --- RESTORED ORIGINAL AI ENGINE (unchanged logic) ---
+// ================= ORIGINAL AI ENGINE (unchanged) =================
 let lastBlockId = -1;
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
 
 function initAIServer() {
-    setInterval(() => {
+    if (window._aiInterval) clearInterval(window._aiInterval);
+    window._aiInterval = setInterval(() => {
         const now = new Date();
         const sec = now.getSeconds();
-        const timeframe = 30;
+        const timeframe = 60;                // 1 minute
         const remains = timeframe - (sec % timeframe);
         const blockId = Math.floor(now.getTime() / (timeframe * 1000));
 
@@ -102,7 +102,7 @@ function initAIServer() {
         const aiStatus = document.getElementById('ai-status');
         const periodLabel = document.getElementById('period-label');
 
-        if (remains >= 26) {
+        if (remains >= 56) {                 // waiting phase (last 4 sec)
             resultText.innerText = "WAITING...";
             aiStatus.innerText = "SERVER: SCANNING TRENDS...";
             aiStatus.style.color = "#ffcc00";
@@ -117,7 +117,7 @@ function initAIServer() {
             document.getElementById('lucky-num').innerText = currentPrediction.nums;
             aiStatus.innerText = "SERVER: SIGNAL SYNCED";
             aiStatus.style.color = "#00ff87";
-            periodLabel.innerText = "WINGO 30S AI SIGNAL";
+            periodLabel.innerText = "WINGO 1M AI SIGNAL";
         }
         document.getElementById('timer-val').innerText = remains;
         document.getElementById('progress-fill').style.width = (remains / timeframe) * 100 + "%";
@@ -153,4 +153,72 @@ function runMarketAnalysis(blockId) {
         let n2 = ((seed+3) % 5);
         currentPrediction.nums = n1 + " & " + n2;
     }
+}
+
+// ================= WIN/LOSS TRACKING (new, non‑invasive) =================
+let lastPeriodId = null;
+let currentPredictionForPeriod = null;   // stores prediction for the current period
+let winCount = 0, lossCount = 0, streak = 0;
+
+function initTracking() {
+    // Fetch every 2 seconds to detect new results
+    setInterval(fetchGameResult, 2000);
+    fetchGameResult();
+}
+
+async function fetchGameResult() {
+    try {
+        const response = await fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?t=' + Date.now());
+        const data = await response.json();
+        const latest = data.data.list[0];
+        const period = latest.issueNumber;
+        const winningNumber = parseInt(latest.number);
+        const actual = winningNumber >= 5 ? "BIG" : "SMALL";
+
+        // If we have a prediction stored and period changed -> evaluate
+        if (lastPeriodId !== null && lastPeriodId !== period && currentPredictionForPeriod !== null) {
+            const won = (currentPredictionForPeriod === actual);
+            if (won) {
+                winCount++;
+                streak = streak > 0 ? streak + 1 : 1;
+            } else {
+                lossCount++;
+                streak = streak < 0 ? streak - 1 : -1;
+            }
+            updateStatsUI();
+            addHistoryRow(lastPeriodId, currentPredictionForPeriod, winningNumber, actual, won);
+        }
+
+        // Update for next period: store prediction for the current period (the one that will end next)
+        if (lastPeriodId !== period) {
+            lastPeriodId = period;
+            // Get the current AI prediction (live from the engine)
+            currentPredictionForPeriod = currentPrediction.res;
+            // Also update the period label in UI (optional)
+            const nextPeriod = (BigInt(period) + 1n).toString();
+            document.getElementById('period-label').innerHTML = `PERIOD: ${nextPeriod.slice(-6)}`;
+        }
+    } catch (err) {
+        console.warn("Tracking fetch error:", err);
+    }
+}
+
+function updateStatsUI() {
+    document.getElementById('win-count').innerText = winCount;
+    document.getElementById('loss-count').innerText = lossCount;
+    document.getElementById('streak-count').innerText = streak;
+}
+
+function addHistoryRow(period, predicted, number, actual, won) {
+    const tbody = document.getElementById('history-body');
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>${period.slice(-4)}</td>
+        <td>${predicted}</td>
+        <td>${number}</td>
+        <td class="${won ? 'win-badge' : 'loss-badge'}">${won ? 'WIN ✓' : 'LOSS ✗'}</td>
+    `;
+    tbody.insertBefore(row, tbody.firstChild);
+    // Keep only last 10 rows
+    while (tbody.children.length > 10) tbody.removeChild(tbody.lastChild);
 }
