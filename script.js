@@ -47,7 +47,7 @@ function verifyDeposit() {
         document.getElementById('game-frame').src = CONFIG.wingoUrl;
         showView('signal-view');
         initAIServer();
-        initTracking();   // start tracking after AI is ready
+        initTracking();
     }, 2500);
 }
 
@@ -94,7 +94,7 @@ function initAIServer() {
     window._aiInterval = setInterval(() => {
         const now = new Date();
         const sec = now.getSeconds();
-        const timeframe = 60;                // 1 minute
+        const timeframe = 60;
         const remains = timeframe - (sec % timeframe);
         const blockId = Math.floor(now.getTime() / (timeframe * 1000));
 
@@ -102,22 +102,23 @@ function initAIServer() {
         const aiStatus = document.getElementById('ai-status');
         const periodLabel = document.getElementById('period-label');
 
-        if (remains >= 56) {                 // waiting phase (last 4 sec)
+        if (remains >= 56) {
             resultText.innerText = "WAITING...";
-            aiStatus.innerText = "SERVER: SCANNING TRENDS...";
+            aiStatus.innerText = "SCANNING TRENDS";
             aiStatus.style.color = "#ffcc00";
-            periodLabel.innerText = "SYNCING 91APP";
+            periodLabel.innerHTML = "⏳ NEXT PERIOD: --";
         } else {
             if (blockId !== lastBlockId) {
                 lastBlockId = blockId;
                 runMarketAnalysis(blockId);
+                // When a new block starts, store the prediction for the upcoming period
+                storePredictionForNextPeriod();
             }
             resultText.innerText = currentPrediction.res;
             resultText.style.color = currentPrediction.color;
             document.getElementById('lucky-num').innerText = currentPrediction.nums;
-            aiStatus.innerText = "SERVER: SIGNAL SYNCED";
+            aiStatus.innerText = "SIGNAL ACTIVE";
             aiStatus.style.color = "#00ff87";
-            periodLabel.innerText = "WINGO 1M AI SIGNAL";
         }
         document.getElementById('timer-val').innerText = remains;
         document.getElementById('progress-fill').style.width = (remains / timeframe) * 100 + "%";
@@ -155,58 +156,75 @@ function runMarketAnalysis(blockId) {
     }
 }
 
-// ================= WIN/LOSS TRACKING (new, non‑invasive) =================
-let lastPeriodId = null;
-let currentPredictionForPeriod = null;   // stores prediction for the current period
-let winCount = 0, lossCount = 0, streak = 0;
+// ================= FIXED WIN/LOSS TRACKING =================
+let pendingPrediction = null;      // { period: string, prediction: string }
+let totalPredictions = 0, wins = 0, losses = 0;
 
-function initTracking() {
-    // Fetch every 2 seconds to detect new results
-    setInterval(fetchGameResult, 2000);
-    fetchGameResult();
+function storePredictionForNextPeriod() {
+    // Determine the period number that will be closed next (based on current time + 1 minute)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2,'0');
+    const day = String(now.getDate()).padStart(2,'0');
+    const hours = String(now.getHours()).padStart(2,'0');
+    const minutes = String(now.getMinutes()).padStart(2,'0');
+    // Period format: YYYYMMDD1000xxxx where xxxx increments every minute
+    // Simpler: use API's upcoming period concept: current timestamp floor to minute + 1
+    const basePeriod = `${year}${month}${day}1000${String((now.getHours()*60) + now.getMinutes() + 1).padStart(4,'0')}`;
+    pendingPrediction = {
+        period: basePeriod,
+        prediction: currentPrediction.res
+    };
+    // Update UI to show period we are predicting for
+    document.getElementById('period-label').innerHTML = `🎯 PREDICTING PERIOD: ${basePeriod.slice(-6)}`;
 }
 
-async function fetchGameResult() {
+async function initTracking() {
+    // Fetch every 2 seconds to catch new results
+    setInterval(checkAndUpdateResults, 2000);
+    // Also fetch initial to set last known period
+    await checkAndUpdateResults();
+}
+
+let lastProcessedPeriod = null;
+
+async function checkAndUpdateResults() {
     try {
-        const response = await fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?t=' + Date.now());
-        const data = await response.json();
+        const res = await fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?t=' + Date.now());
+        const data = await res.json();
         const latest = data.data.list[0];
         const period = latest.issueNumber;
         const winningNumber = parseInt(latest.number);
-        const actual = winningNumber >= 5 ? "BIG" : "SMALL";
+        const actualSize = winningNumber >= 5 ? "BIG" : "SMALL";
 
-        // If we have a prediction stored and period changed -> evaluate
-        if (lastPeriodId !== null && lastPeriodId !== period && currentPredictionForPeriod !== null) {
-            const won = (currentPredictionForPeriod === actual);
+        // If we have a pending prediction and the period matches the latest result
+        if (pendingPrediction && pendingPrediction.period === period) {
+            // Evaluate
+            const won = (pendingPrediction.prediction === actualSize);
+            totalPredictions++;
             if (won) {
-                winCount++;
-                streak = streak > 0 ? streak + 1 : 1;
+                wins++;
             } else {
-                lossCount++;
-                streak = streak < 0 ? streak - 1 : -1;
+                losses++;
             }
             updateStatsUI();
-            addHistoryRow(lastPeriodId, currentPredictionForPeriod, winningNumber, actual, won);
+            addHistoryRow(period, pendingPrediction.prediction, winningNumber, actualSize, won);
+            // Clear pending prediction
+            pendingPrediction = null;
+            lastProcessedPeriod = period;
         }
-
-        // Update for next period: store prediction for the current period (the one that will end next)
-        if (lastPeriodId !== period) {
-            lastPeriodId = period;
-            // Get the current AI prediction (live from the engine)
-            currentPredictionForPeriod = currentPrediction.res;
-            // Also update the period label in UI (optional)
-            const nextPeriod = (BigInt(period) + 1n).toString();
-            document.getElementById('period-label').innerHTML = `PERIOD: ${nextPeriod.slice(-6)}`;
-        }
+        // Also handle case where we missed? But tracking is per cycle.
     } catch (err) {
-        console.warn("Tracking fetch error:", err);
+        console.warn("Tracking error", err);
     }
 }
 
 function updateStatsUI() {
-    document.getElementById('win-count').innerText = winCount;
-    document.getElementById('loss-count').innerText = lossCount;
-    document.getElementById('streak-count').innerText = streak;
+    document.getElementById('total-pred').innerText = totalPredictions;
+    document.getElementById('win-count').innerText = wins;
+    document.getElementById('loss-count').innerText = losses;
+    const accuracy = totalPredictions === 0 ? 0 : Math.round((wins / totalPredictions) * 100);
+    document.getElementById('accuracy').innerText = `${accuracy}%`;
 }
 
 function addHistoryRow(period, predicted, number, actual, won) {
