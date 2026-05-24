@@ -1,9 +1,12 @@
 :root {
     --accent: #00d2ff;
-    --bg: rgba(10, 10, 15, 0.98);
+    --bg: rgba(8, 8, 12, 0.96);
     --neon-green: #00ff87;
     --loss-red: #ff3366;
+    --gold: #ffcc00;
 }
+
+* { box-sizing: border-box; user-select: none; }
 
 body, html {
     margin: 0;
@@ -12,19 +15,20 @@ body, html {
     height: 100%;
     overflow: hidden;
     background: #000;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Poppins', 'Segoe UI', sans-serif;
 }
 
 #game-frame {
-    width: 100%;
-    height: 100%;
-    border: none;
     position: fixed;
     top: 0;
     left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
     z-index: 1;
 }
 
+/* Mini logo */
 #mini-logo {
     position: fixed;
     top: 100px;
@@ -40,55 +44,50 @@ body, html {
     box-shadow: 0 0 15px var(--accent);
     overflow: hidden;
 }
-#mini-logo img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+#mini-logo img { width: 100%; height: 100%; object-fit: cover; }
 
+/* Main panel */
 #main-box {
     position: fixed;
-    top: 150px;
-    left: 50px;
-    width: 250px;
+    top: 120px;
+    left: 30px;
+    width: 280px;
     background: var(--bg);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
     border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 20px;
+    border-radius: 28px;
     z-index: 10000;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    transition: all 0.2s;
 }
 
 #drag-handle {
-    background: rgba(255,255,255,0.08);
-    padding: 12px 12px;
-    border-radius: 20px 20px 0 0;
+    background: rgba(255,255,255,0.06);
+    padding: 14px 16px;
+    border-radius: 28px 28px 0 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     cursor: grab;
-    user-select: none;
 }
 #drag-handle:active { cursor: grabbing; }
 
 .live-dot {
     width: 8px;
     height: 8px;
-    background: #ff3366;
+    background: var(--neon-green);
     border-radius: 50%;
-    animation: blink 1s infinite;
-    box-shadow: 0 0 4px #ff3366;
+    animation: pulse 1.2s infinite;
+    box-shadow: 0 0 6px var(--neon-green);
 }
 .title {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 800;
-    color: white;
-    margin-left: 6px;
-    letter-spacing: 1px;
     background: linear-gradient(135deg, #fff, var(--accent));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+    letter-spacing: 1px;
 }
 .close-btn {
     background: none;
@@ -96,117 +95,92 @@ body, html {
     color: #aaa;
     font-size: 22px;
     cursor: pointer;
-    line-height: 1;
     padding: 0 6px;
-    transition: 0.2s;
 }
 .close-btn:hover { color: white; }
 
-.inner-content {
-    padding: 14px 12px 16px;
-    text-align: center;
-}
+.inner-content { padding: 16px; text-align: center; }
 
-.view-panel {
-    animation: fadeIn 0.25s ease;
-}
-
+/* Login / Deposit */
 .label-sm {
-    font-size: 9px;
+    font-size: 10px;
     color: #aaa;
-    margin-bottom: 8px;
     letter-spacing: 1px;
+    margin-bottom: 8px;
 }
-
 #passKey {
     width: 100%;
-    padding: 10px;
-    background: #0a0a0f;
+    padding: 12px;
+    background: #0f0f14;
     border: 1px solid #2a2a35;
-    border-radius: 14px;
+    border-radius: 18px;
     color: var(--accent);
     text-align: center;
-    font-size: 12px;
+    font-size: 13px;
     margin-bottom: 12px;
     outline: none;
-    box-sizing: border-box;
 }
-
 .check-row {
-    font-size: 9px;
+    font-size: 10px;
     color: #bbb;
-    margin-bottom: 14px;
-    text-align: left;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 6px;
 }
-
 .btn-primary, .btn-gold, .btn-verify {
     width: 100%;
-    padding: 10px;
-    border: none;
+    padding: 12px;
     border-radius: 40px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
     cursor: pointer;
     margin-bottom: 8px;
-    transition: transform 0.1s ease;
+    transition: transform 0.1s;
 }
 .btn-primary:active, .btn-gold:active, .btn-verify:active { transform: scale(0.97); }
-.btn-primary { background: var(--accent); color: #000; box-shadow: 0 0 8px var(--accent); }
-.btn-gold { background: #f5b042; color: #000; box-shadow: 0 0 6px #f5b042; }
-.btn-verify { background: #2c2c3a; color: #fff; border: 1px solid #4a4a5a; }
+.btn-primary { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent); }
+.btn-gold { background: var(--gold); color: #000; }
+.btn-verify { background: #2c2c3a; color: white; border: 1px solid #4a4a5a; }
+.warn-msg { font-size: 11px; background: #ffcc0022; padding: 8px; border-radius: 20px; color: #ffcc55; margin-bottom: 12px; }
 
-.warn-msg {
-    font-size: 11px;
-    background: #ffcc0022;
-    padding: 6px;
-    border-radius: 12px;
-    color: #ffcc55;
-    margin-bottom: 12px;
-}
-
-#period-label {
-    font-size: 8px;
-    color: #aaa;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 5px;
+/* Signal view */
+.period-badge {
+    font-size: 9px;
+    background: rgba(255,255,255,0.08);
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 40px;
+    color: #ccc;
+    margin-bottom: 10px;
 }
 #result-text {
-    font-size: 34px;
+    font-size: 48px;
     font-weight: 900;
-    margin: 8px 0 5px;
-    background: linear-gradient(135deg, #ffffff, #aaccff);
+    background: linear-gradient(135deg, #fff, #ddd);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+    margin: 8px 0 5px;
 }
 #lucky-num {
-    font-size: 15px;
+    font-size: 18px;
     color: var(--accent);
-    background: rgba(0, 210, 255, 0.12);
-    padding: 5px 12px;
-    border-radius: 30px;
-    border: 0.5px solid rgba(0,210,255,0.4);
+    background: rgba(0,210,255,0.1);
+    padding: 6px 14px;
+    border-radius: 40px;
     display: inline-block;
     margin-bottom: 12px;
     font-weight: bold;
 }
-.timer-info {
-    font-size: 10px;
-    color: #ddd;
-    font-weight: bold;
-    margin-top: 4px;
-}
+.timer-info { font-size: 11px; color: #ddd; margin-top: 6px; }
 .progress-bg {
     width: 100%;
     height: 4px;
-    background: #1e1e2a;
+    background: #222;
     border-radius: 10px;
     overflow: hidden;
-    margin: 6px 0;
+    margin: 8px 0;
 }
 #progress-fill {
     height: 100%;
@@ -214,36 +188,31 @@ body, html {
     background: var(--accent);
     transition: width 0.2s linear;
 }
-#ai-status {
-    font-size: 7px;
-    color: #00ff87;
-    margin-top: 10px;
-    opacity: 0.85;
-    font-weight: 600;
-}
+#ai-status { font-size: 8px; color: var(--neon-green); margin-top: 8px; }
 
-/* Stats row */
-.stats-row {
-    display: flex;
-    justify-content: space-around;
-    margin: 15px 0 10px;
+/* Stats grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
+    margin: 16px 0 12px;
 }
-.stat-badge {
-    background: rgba(255,255,255,0.05);
-    border-radius: 20px;
-    padding: 6px 10px;
+.stat-card {
+    background: rgba(255,255,255,0.04);
+    border-radius: 18px;
+    padding: 8px 4px;
     text-align: center;
-    flex: 1;
 }
-.stat-badge span {
+.stat-card span {
     font-size: 9px;
     color: #aaa;
     display: block;
 }
-.stat-badge strong {
+.stat-card strong {
     font-size: 16px;
-    color: #fff;
+    color: white;
+    display: block;
+    margin-top: 4px;
 }
 
 /* History table */
@@ -255,27 +224,24 @@ body, html {
 }
 .history-table th {
     color: #888;
-    padding: 6px 0;
-    font-weight: normal;
-    border-bottom: 1px solid #333;
+    padding: 8px 0;
+    font-weight: 500;
+    border-bottom: 1px solid #2a2a35;
 }
 .history-table td {
-    padding: 6px 0;
+    padding: 8px 0;
     border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-.win-badge {
-    color: var(--neon-green);
-    font-weight: bold;
-}
-.loss-badge {
-    color: var(--loss-red);
-    font-weight: bold;
+.win-badge { color: var(--neon-green); font-weight: bold; }
+.loss-badge { color: var(--loss-red); font-weight: bold; }
+.footer-note {
+    font-size: 7px;
+    color: #555;
+    margin-top: 12px;
+    text-align: center;
 }
 
-@keyframes blink {
-    50% { opacity: 0.3; }
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes pulse {
+    0% { opacity: 0.4; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1.2); }
 }
