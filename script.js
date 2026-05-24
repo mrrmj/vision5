@@ -4,7 +4,7 @@ const CONFIG = {
     depositUrl: "https://91appt.com/#/wallet/Recharge"
 };
 
-// --- AUTH & PERSISTENCE ---
+// -------------------- AUTH & PERSISTENCE --------------------
 window.onload = function() {
     const saved = localStorage.getItem('serverKey');
     const expiry = localStorage.getItem('keyExpiry');
@@ -58,7 +58,7 @@ function verifyDeposit() {
     }, 2500);
 }
 
-// --- DRAG LOGIC (unchanged) ---
+// -------------------- DRAG LOGIC (unchanged) --------------------
 const box = document.getElementById("main-box");
 const handle = document.getElementById("drag-handle");
 let active = false, currentX, currentY, initialX, initialY, xOff = 0, yOff = 0;
@@ -91,7 +91,7 @@ handle.addEventListener("touchstart", dragStart);
 document.addEventListener("touchend", dragEnd);
 document.addEventListener("touchmove", drag);
 
-// ================= ORIGINAL AI ENGINE (UNCHANGED) =================
+// -------------------- ORIGINAL AI ENGINE (unchanged prediction logic) --------------------
 let lastBlockId = -1;
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
@@ -116,8 +116,8 @@ function initAIServer() {
             if (blockId !== lastBlockId) {
                 lastBlockId = blockId;
                 runMarketAnalysis(blockId);
-                // When AI generates a new prediction, notify tracking system
-                if (window.onNewPrediction) window.onNewPrediction(currentPrediction.res);
+                // When a new prediction is generated, immediately store it for the upcoming period
+                storePredictionForNextPeriod();
             }
             resultText.innerText = currentPrediction.res;
             resultText.style.color = currentPrediction.color;
@@ -157,26 +157,41 @@ function runMarketAnalysis(blockId) {
         let n2 = ((seed+3) % 5);
         currentPrediction.nums = n1 + " & " + n2;
     }
+    console.log(`[AI] New prediction generated: ${currentPrediction.res} (numbers: ${currentPrediction.nums})`);
 }
 
-// ================= FIXED TRACKING (Period‑change based) =================
-let lastSeenPeriod = null;           // last period fetched from API
-let pendingEvaluation = null;        // { period, prediction }
+// -------------------- FIXED TRACKING (stores prediction for next period) --------------------
+let pendingPredictions = {};   // key = period string, value = prediction (BIG/SMALL)
 let totalPredictions = 0, wins = 0, losses = 0;
-let latestAIPrediction = "---";      // stores current AI prediction for next period
+let lastSeenPeriod = null;
 
-// Called by AI engine when a new prediction is generated
-window.onNewPrediction = (pred) => {
-    latestAIPrediction = pred;
-    console.log("AI updated prediction:", pred);
-};
+async function storePredictionForNextPeriod() {
+    try {
+        // Fetch the latest period from the game API
+        const res = await fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?t=' + Date.now());
+        const data = await res.json();
+        const latest = data.data.list[0];
+        const currentPeriod = latest.issueNumber;
+        const nextPeriod = (BigInt(currentPeriod) + 1n).toString();
+
+        // Store the current AI prediction for that next period (overwrite if already exists)
+        pendingPredictions[nextPeriod] = currentPrediction.res;
+        console.log(`[TRACK] Stored prediction for period ${nextPeriod}: ${currentPrediction.res}`);
+
+        // Update the UI to show which period we are predicting
+        document.getElementById('period-label').innerHTML = `🎯 PERIOD: ${nextPeriod.slice(-6)}`;
+    } catch (err) {
+        console.error("[TRACK] Failed to fetch period for storing prediction", err);
+    }
+}
 
 async function initTracking() {
-    setInterval(checkPeriodChange, 2000);
-    await checkPeriodChange();
+    // Run every 2 seconds to check for new results
+    setInterval(checkForResults, 2000);
+    await checkForResults(); // immediate first check
 }
 
-async function checkPeriodChange() {
+async function checkForResults() {
     try {
         const res = await fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?t=' + Date.now());
         const data = await res.json();
@@ -185,46 +200,32 @@ async function checkPeriodChange() {
         const winningNumber = parseInt(latest.number);
         const actualSize = winningNumber >= 5 ? "BIG" : "SMALL";
 
-        // If this is the first run, just store the period and return
-        if (lastSeenPeriod === null) {
-            lastSeenPeriod = currentPeriod;
-            return;
+        console.log(`[API] Current period: ${currentPeriod}, result: ${winningNumber} (${actualSize})`);
+
+        // If we have a pending prediction for this period, evaluate it
+        if (pendingPredictions[currentPeriod]) {
+            const predicted = pendingPredictions[currentPeriod];
+            const won = (predicted === actualSize);
+
+            totalPredictions++;
+            if (won) wins++; else losses++;
+            updateStatsUI();
+            addHistoryRow(currentPeriod, predicted, winningNumber, actualSize, won);
+
+            console.log(`[RESULT] Period ${currentPeriod}: predicted ${predicted}, actual ${actualSize} -> ${won ? "WIN" : "LOSS"}`);
+
+            // Remove the prediction so it's not evaluated again
+            delete pendingPredictions[currentPeriod];
+        } else {
+            console.log(`[TRACK] No pending prediction for period ${currentPeriod}`);
         }
 
-        // If period changed, that means a new result is available
+        // Update the last seen period for reference (not critical)
         if (lastSeenPeriod !== currentPeriod) {
-            // 1. Evaluate the period that just ended (lastSeenPeriod)
-            if (pendingEvaluation && pendingEvaluation.period === lastSeenPeriod) {
-                const won = (pendingEvaluation.prediction === actualSize);
-                totalPredictions++;
-                if (won) wins++; else losses++;
-                updateStatsUI();
-                addHistoryRow(lastSeenPeriod, pendingEvaluation.prediction, winningNumber, actualSize, won);
-                console.log(`Period ${lastSeenPeriod}: predicted ${pendingEvaluation.prediction}, actual ${actualSize} -> ${won ? "WIN" : "LOSS"}`);
-                pendingEvaluation = null;
-            } else {
-                console.warn(`No pending prediction for period ${lastSeenPeriod}`);
-            }
-
-            // 2. Store a new prediction for the next period (currentPeriod + 1)
-            const nextPeriod = (BigInt(currentPeriod) + 1n).toString();
-            if (latestAIPrediction !== "---") {
-                pendingEvaluation = {
-                    period: nextPeriod,
-                    prediction: latestAIPrediction
-                };
-                console.log(`Stored prediction for period ${nextPeriod}: ${latestAIPrediction}`);
-                // Update UI to show which period we are predicting
-                document.getElementById('period-label').innerHTML = `🎯 PERIOD: ${nextPeriod.slice(-6)}`;
-            } else {
-                console.warn("No AI prediction available yet");
-            }
-
-            // Update last seen period
             lastSeenPeriod = currentPeriod;
         }
     } catch (err) {
-        console.error("Tracking error:", err);
+        console.error("[TRACK] Error fetching results:", err);
     }
 }
 
@@ -239,10 +240,14 @@ function updateStatsUI() {
 function addHistoryRow(period, predicted, number, actual, won) {
     const tbody = document.getElementById('history-body');
     const row = document.createElement('tr');
+    // Color the PRED column based on BIG/SMALL
+    const predColor = predicted === 'BIG' ? '#00d2ff' : '#ff44dd';
+    // Color the number based on even/odd (optional)
+    const numColor = number % 2 === 0 ? '#ff8888' : '#88ff88';
     row.innerHTML = `
-        <td style="color: #fff;">${period.slice(-4)}</td>
-        <td style="color: ${predicted === 'BIG' ? '#00d2ff' : '#ff44dd'}; font-weight: bold;">${predicted}</td>
-        <td style="color: ${number % 2 === 0 ? '#ff6666' : '#66ff66'}; font-weight: bold;">${number}</td>
+        <td style="color: white;">${period.slice(-4)}</td>
+        <td style="color: ${predColor}; font-weight: bold;">${predicted}</td>
+        <td style="color: ${numColor}; font-weight: bold;">${number}</td>
         <td class="${won ? 'win-badge' : 'loss-badge'}">${won ? 'WIN ✓' : 'LOSS ✗'}</td>
     `;
     tbody.insertBefore(row, tbody.firstChild);
