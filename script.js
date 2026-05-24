@@ -33,8 +33,15 @@ function showView(id) {
 }
 
 function togglePanel(show) {
-    document.getElementById('main-box').style.display = show ? 'block' : 'none';
-    document.getElementById('mini-logo').style.display = show ? 'none' : 'block';
+    const main = document.getElementById('main-box');
+    const mini = document.getElementById('mini-logo');
+    if (show) {
+        main.style.display = 'block';
+        mini.style.display = 'none';
+    } else {
+        main.style.display = 'none';
+        mini.style.display = 'flex';
+    }
 }
 
 function openDeposit() {
@@ -51,7 +58,7 @@ function verifyDeposit() {
     }, 2500);
 }
 
-// --- DRAG LOGIC (unchanged) ---
+// --- DRAG LOGIC ---
 const box = document.getElementById("main-box");
 const handle = document.getElementById("drag-handle");
 let active = false, currentX, currentY, initialX, initialY, xOff = 0, yOff = 0;
@@ -84,7 +91,7 @@ handle.addEventListener("touchstart", dragStart);
 document.addEventListener("touchend", dragEnd);
 document.addEventListener("touchmove", drag);
 
-// ================= ORIGINAL AI ENGINE (100% UNCHANGED) =================
+// ================= ORIGINAL AI ENGINE (UNCHANGED) =================
 let lastBlockId = -1;
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
@@ -110,7 +117,6 @@ function initAIServer() {
             if (blockId !== lastBlockId) {
                 lastBlockId = blockId;
                 runMarketAnalysis(blockId);
-                // New prediction generated – tracking will pick it up
             }
             resultText.innerText = currentPrediction.res;
             resultText.style.color = currentPrediction.color;
@@ -126,7 +132,6 @@ function initAIServer() {
 function runMarketAnalysis(blockId) {
     let seed = (blockId * 0x7FFFFFFF) % 1234567;
     let trendFactor = (seed % 10);
-    
     let res = "BIG";
     if (virtualHistory.length > 3) {
         let last3 = virtualHistory.slice(-3);
@@ -136,7 +141,6 @@ function runMarketAnalysis(blockId) {
     } else {
         res = trendFactor > 4 ? "BIG" : "SMALL";
     }
-
     virtualHistory.push(res);
     if(virtualHistory.length > 10) virtualHistory.shift();
 
@@ -154,16 +158,14 @@ function runMarketAnalysis(blockId) {
     }
 }
 
-// ================= FIXED TRACKING (USES REAL PERIOD NUMBERS) =================
+// ================= FIXED TRACKING (REAL PERIOD MATCHING) =================
 let pendingPrediction = null;      // { period: string, prediction: string }
 let totalPredictions = 0, wins = 0, losses = 0;
-let lastProcessedPeriod = null;
-let lastPredictedPeriod = null;     // the period we have already set a prediction for
+let lastPredictedPeriod = null;    // the period we have already set a prediction for
 
 async function initTracking() {
-    // Fetch every 2 seconds to get new results and update predictions
     setInterval(checkAndUpdate, 2000);
-    await checkAndUpdate(); // initial run
+    await checkAndUpdate();
 }
 
 async function checkAndUpdate() {
@@ -175,30 +177,29 @@ async function checkAndUpdate() {
         const winningNumber = parseInt(latest.number);
         const actualSize = winningNumber >= 5 ? "BIG" : "SMALL";
 
-        // --- Step 1: Check if a pending prediction has been settled ---
+        // 1. If we have a pending prediction for the current period, evaluate it
         if (pendingPrediction && pendingPrediction.period === currentPeriod) {
             const won = (pendingPrediction.prediction === actualSize);
             totalPredictions++;
             if (won) wins++; else losses++;
             updateStatsUI();
             addHistoryRow(currentPeriod, pendingPrediction.prediction, winningNumber, actualSize, won);
-            pendingPrediction = null; // cleared
+            pendingPrediction = null; // clear
         }
 
-        // --- Step 2: Determine the next period (the one that will be drawn next) ---
+        // 2. Determine the next period (the one that will be drawn after currentPeriod)
         const nextPeriod = (BigInt(currentPeriod) + 1n).toString();
 
-        // --- Step 3: If we haven't predicted for the next period yet, store current AI prediction ---
+        // 3. If we haven't stored a prediction for that next period yet, store the current AI prediction
         if (lastPredictedPeriod !== nextPeriod && currentPrediction.res !== "---") {
             pendingPrediction = {
                 period: nextPeriod,
                 prediction: currentPrediction.res
             };
             lastPredictedPeriod = nextPeriod;
-            // Update UI to show which period we are predicting
+            // Update UI with the period we are predicting
             document.getElementById('period-label').innerHTML = `🎯 PERIOD: ${nextPeriod.slice(-6)}`;
         }
-
     } catch (err) {
         console.warn("Tracking error", err);
     }
@@ -222,6 +223,5 @@ function addHistoryRow(period, predicted, number, actual, won) {
         <td class="${won ? 'win-badge' : 'loss-badge'}">${won ? 'WIN ✓' : 'LOSS ✗'}</td>
     `;
     tbody.insertBefore(row, tbody.firstChild);
-    // Keep only last 10 rows
     while (tbody.children.length > 10) tbody.removeChild(tbody.lastChild);
 }
