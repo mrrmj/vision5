@@ -48,13 +48,17 @@ body, html {
     box-shadow: 0 0 15px var(--accent);
     overflow: hidden;
 }
-#mini-logo img { width: 100%; height: 100%; object-fit: cover; }
+#mini-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
 
 #main-box {
     position: fixed;
     top: 120px;
     left: 30px;
-    width: 290px;
+    width: 310px;
     background: var(--bg);
     backdrop-filter: blur(16px);
     border: 1px solid rgba(255,255,255,0.2);
@@ -72,7 +76,9 @@ body, html {
     align-items: center;
     cursor: grab;
 }
-#drag-handle:active { cursor: grabbing; }
+#drag-handle:active {
+    cursor: grabbing;
+}
 
 .live-dot {
     width: 8px;
@@ -82,6 +88,7 @@ body, html {
     animation: pulse 1.2s infinite;
     box-shadow: 0 0 6px var(--neon-green);
 }
+
 .title {
     font-size: 13px;
     font-weight: 800;
@@ -91,6 +98,7 @@ body, html {
     color: transparent;
     letter-spacing: 1px;
 }
+
 .close-btn {
     background: none;
     border: none;
@@ -99,16 +107,23 @@ body, html {
     cursor: pointer;
     padding: 0 6px;
 }
-.close-btn:hover { color: white; }
+.close-btn:hover {
+    color: white;
+}
 
-.inner-content { padding: 16px; text-align: center; }
+.inner-content {
+    padding: 16px;
+    text-align: center;
+}
 
+/* Login / Deposit */
 .label-sm {
     font-size: 11px;
     color: #aaa;
     letter-spacing: 1px;
     margin-bottom: 8px;
 }
+
 #passKey {
     width: 100%;
     padding: 12px;
@@ -121,6 +136,7 @@ body, html {
     margin-bottom: 12px;
     outline: none;
 }
+
 .check-row {
     font-size: 11px;
     color: #bbb;
@@ -129,6 +145,7 @@ body, html {
     align-items: center;
     gap: 6px;
 }
+
 .btn-primary, .btn-gold, .btn-verify {
     width: 100%;
     padding: 12px;
@@ -139,12 +156,34 @@ body, html {
     margin-bottom: 8px;
     transition: transform 0.1s;
 }
-.btn-primary:active, .btn-gold:active, .btn-verify:active { transform: scale(0.97); }
-.btn-primary { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent); }
-.btn-gold { background: var(--gold); color: #000; }
-.btn-verify { background: #2c2c3a; color: white; border: 1px solid #4a4a5a; }
-.warn-msg { font-size: 12px; background: #ffcc0022; padding: 8px; border-radius: 20px; color: #ffcc55; margin-bottom: 12px; }
+.btn-primary:active, .btn-gold:active, .btn-verify:active {
+    transform: scale(0.97);
+}
+.btn-primary {
+    background: var(--accent);
+    color: #000;
+    box-shadow: 0 0 10px var(--accent);
+}
+.btn-gold {
+    background: var(--gold);
+    color: #000;
+}
+.btn-verify {
+    background: #2c2c3a;
+    color: white;
+    border: 1px solid #4a4a5a;
+}
 
+.warn-msg {
+    font-size: 12px;
+    background: #ffcc0022;
+    padding: 8px;
+    border-radius: 20px;
+    color: #ffcc55;
+    margin-bottom: 12px;
+}
+
+/* Signal view */
 .period-badge {
     font-size: 10px;
     background: rgba(255,255,255,0.08);
@@ -154,6 +193,7 @@ body, html {
     color: #ccc;
     margin-bottom: 12px;
 }
+
 #result-text {
     font-size: 52px;
     font-weight: 800;
@@ -163,6 +203,7 @@ body, html {
     color: transparent;
     margin: 8px 0 5px;
 }
+
 #lucky-num {
     font-size: 18px;
     color: var(--accent);
@@ -173,7 +214,14 @@ body, html {
     margin-bottom: 12px;
     font-weight: 600;
 }
-.timer-info { font-size: 12px; color: #ddd; margin-top: 6px; font-weight: 500; }
+
+.timer-info {
+    font-size: 12px;
+    color: #ddd;
+    margin-top: 6px;
+    font-weight: 500;
+}
+
 .progress-bg {
     width: 100%;
     height: 4px;
@@ -188,8 +236,15 @@ body, html {
     background: var(--accent);
     transition: width 0.2s linear;
 }
-#ai-status { font-size: 9px; color: var(--neon-green); margin-top: 8px; font-weight: 500; }
 
+#ai-status {
+    font-size: 9px;
+    color: var(--neon-green);
+    margin-top: 8px;
+    font-weight: 500;
+}
+
+/* Stats grid */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -215,7 +270,7 @@ body, html {
     font-weight: 700;
 }
 
-/* Fixed table colors - light text on dark background */
+/* History table - FIXED VISIBILITY */
 .history-table {
     width: 100%;
     font-size: 11px;
@@ -223,34 +278,33 @@ body, html {
     margin-top: 8px;
 }
 .history-table th {
-    color: #aaa !important;
-    background: transparent;
+    color: #ccc;
     padding: 8px 0;
-    font-weight: 500;
+    font-weight: 600;
     border-bottom: 1px solid #2a2a35;
 }
 .history-table td {
-    color: #f0f0f0 !important;  /* Bright text for period, pred, num */
     padding: 8px 0;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.history-table td:first-child,
-.history-table td:nth-child(2),
-.history-table td:nth-child(3) {
-    color: #ffffff !important;
+    color: white;                /* force white text */
     font-weight: 500;
 }
-.win-badge { 
-    color: var(--neon-green) !important; 
+/* Specific cell colors */
+.history-table td:nth-child(2) {
+    font-weight: bold;
+}
+.win-badge {
+    color: var(--neon-green);
     font-weight: 700;
 }
-.loss-badge { 
-    color: var(--loss-red) !important; 
+.loss-badge {
+    color: var(--loss-red);
     font-weight: 700;
 }
+
 .footer-note {
     font-size: 8px;
-    color: #555;
+    color: #666;
     margin-top: 14px;
     text-align: center;
 }
