@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SURESHOT AI PREDICTOR · 91APP</title>
+    <title>SURESHOT AI · 1MIN TRACKING</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body oncontextmenu="return false;">
 
     <!-- Background Game Frame (91APP) -->
-    <iframe id="game-frame" src="https://91appt.com/#/saasLottery/WinGo?gameCode=WinGo_30S&lottery=WinGo"></iframe>
+    <iframe id="game-frame" src="https://91appt.com/#/saasLottery/WinGo?gameCode=WinGo_1M&lottery=WinGo"></iframe>
 
     <!-- Floating Mini Logo (minimized state) -->
     <div id="mini-logo" onclick="togglePanel(true)">
@@ -43,14 +43,29 @@
                 <button class="btn-verify" onclick="verifyDeposit()">VERIFY SYNC</button>
             </div>
 
-            <!-- Signal Interface -->
+            <!-- Signal Interface + Tracking -->
             <div id="signal-view" class="view-panel" style="display: none;">
                 <div id="period-label">ANALYZING...</div>
                 <div id="result-text">FETCHING</div>
                 <div id="lucky-num">0 & 0</div>
-                <div class="timer-info">NEXT: <span id="timer-val">30</span>S</div>
+                <div class="timer-info">NEXT: <span id="timer-val">60</span>s</div>
                 <div class="progress-bg"><div id="progress-fill"></div></div>
                 <div id="ai-status">● SERVER: CONNECTED</div>
+
+                <!-- Win/Loss Stats -->
+                <div class="stats-row">
+                    <div class="stat-badge"><span>WINS</span><strong id="win-count">0</strong></div>
+                    <div class="stat-badge"><span>LOSSES</span><strong id="loss-count">0</strong></div>
+                    <div class="stat-badge"><span>STREAK</span><strong id="streak-count">0</strong></div>
+                </div>
+
+                <!-- History Table -->
+                <table class="history-table" id="history-table">
+                    <thead>
+                        <tr><th>PERIOD</th><th>PRED</th><th>NUM</th><th>RESULT</th></tr>
+                    </thead>
+                    <tbody id="history-body"></tbody>
+                </table>
             </div>
         </div>
     </div>
