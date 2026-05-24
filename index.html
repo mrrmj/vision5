@@ -4,19 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI PREDICTOR · 1MIN ACCURACY</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body oncontextmenu="return false;">
 
-    <!-- Background Game Frame -->
     <iframe id="game-frame" src="https://91appt.com/#/saasLottery/WinGo?gameCode=WinGo_1M&lottery=WinGo"></iframe>
 
-    <!-- Floating Mini Logo -->
     <div id="mini-logo" onclick="togglePanel(true)">
         <img src="https://t.me/i/userpic/320/Xdengers.svg" alt="AI">
     </div>
 
-    <!-- Main Draggable Panel -->
     <div id="main-box">
         <div id="drag-handle">
             <div class="header-info">
@@ -26,7 +24,6 @@
             <button class="close-btn" onclick="togglePanel(false)">×</button>
         </div>
         <div class="inner-content">
-            <!-- Login View -->
             <div id="login-view" class="view-panel">
                 <p class="label-sm">⚡ ENTER ACCESS KEY</p>
                 <input type="password" id="passKey" placeholder="SERVER KEY">
@@ -36,14 +33,12 @@
                 <button class="btn-primary" onclick="handleAuth()">CONNECT AI</button>
             </div>
 
-            <!-- Deposit Gate -->
             <div id="deposit-view" class="view-panel" style="display: none;">
                 <p class="warn-msg">💰 DEPOSIT 500 BDT FOR ACCESS</p>
                 <button class="btn-gold" onclick="openDeposit()">RECHARGE NOW</button>
                 <button class="btn-verify" onclick="verifyDeposit()">VERIFY & SYNC</button>
             </div>
 
-            <!-- Signal Interface with Tracking -->
             <div id="signal-view" class="view-panel" style="display: none;">
                 <div class="period-badge" id="period-label">📡 PERIOD: --</div>
                 <div id="result-text">FETCHING</div>
@@ -52,7 +47,6 @@
                 <div class="progress-bg"><div id="progress-fill"></div></div>
                 <div id="ai-status">● SERVER: CONNECTED</div>
 
-                <!-- Stats Cards -->
                 <div class="stats-grid">
                     <div class="stat-card"><span>🎯 TOTAL</span><strong id="total-pred">0</strong></div>
                     <div class="stat-card"><span>✅ WINS</span><strong id="win-count">0</strong></div>
@@ -60,12 +54,11 @@
                     <div class="stat-card"><span>📈 ACCURACY</span><strong id="accuracy">0%</strong></div>
                 </div>
 
-                <!-- History Table -->
                 <table class="history-table">
                     <thead><tr><th>PERIOD</th><th>PRED</th><th>NUM</th><th>RESULT</th></tr></thead>
                     <tbody id="history-body"></tbody>
                 </table>
-                <p class="footer-note">🔁 Auto-syncs every 2 seconds</p>
+                <p class="footer-note">🔁 Auto‑sync every 2s • Real period matching</p>
             </div>
         </div>
     </div>
