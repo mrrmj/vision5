@@ -158,10 +158,11 @@ function runMarketAnalysis(blockId) {
     }
 }
 
-// ================= FIXED TRACKING (REAL PERIOD MATCHING) =================
+// ================= FIXED TRACKING WITH DEBUG =================
 let pendingPrediction = null;      // { period: string, prediction: string }
 let totalPredictions = 0, wins = 0, losses = 0;
-let lastPredictedPeriod = null;    // the period we have already set a prediction for
+let lastPredictedPeriod = null;
+let lastFetchedPeriod = null;
 
 async function initTracking() {
     setInterval(checkAndUpdate, 2000);
@@ -177,28 +178,40 @@ async function checkAndUpdate() {
         const winningNumber = parseInt(latest.number);
         const actualSize = winningNumber >= 5 ? "BIG" : "SMALL";
 
-        // 1. If we have a pending prediction for the current period, evaluate it
+        console.log(`[DEBUG] Current period: ${currentPeriod}, number: ${winningNumber} (${actualSize})`);
+
+        // If we have a pending prediction and it matches the current period, evaluate
         if (pendingPrediction && pendingPrediction.period === currentPeriod) {
+            console.log(`[DEBUG] Evaluating pending prediction for period ${currentPeriod}: predicted ${pendingPrediction.prediction}, actual ${actualSize}`);
             const won = (pendingPrediction.prediction === actualSize);
             totalPredictions++;
-            if (won) wins++; else losses++;
+            if (won) {
+                wins++;
+                console.log(`[DEBUG] WIN!`);
+            } else {
+                losses++;
+                console.log(`[DEBUG] LOSS!`);
+            }
             updateStatsUI();
             addHistoryRow(currentPeriod, pendingPrediction.prediction, winningNumber, actualSize, won);
-            pendingPrediction = null; // clear
+            pendingPrediction = null;
         }
 
-        // 2. Determine the next period (the one that will be drawn after currentPeriod)
+        // Determine next period (the one that will be drawn after currentPeriod)
         const nextPeriod = (BigInt(currentPeriod) + 1n).toString();
+        console.log(`[DEBUG] Next period will be: ${nextPeriod}`);
 
-        // 3. If we haven't stored a prediction for that next period yet, store the current AI prediction
+        // If we haven't stored a prediction for that next period, store current AI prediction
         if (lastPredictedPeriod !== nextPeriod && currentPrediction.res !== "---") {
+            console.log(`[DEBUG] Storing prediction for period ${nextPeriod}: ${currentPrediction.res}`);
             pendingPrediction = {
                 period: nextPeriod,
                 prediction: currentPrediction.res
             };
             lastPredictedPeriod = nextPeriod;
-            // Update UI with the period we are predicting
             document.getElementById('period-label').innerHTML = `🎯 PERIOD: ${nextPeriod.slice(-6)}`;
+        } else {
+            console.log(`[DEBUG] Already predicted for ${nextPeriod} or AI not ready`);
         }
     } catch (err) {
         console.warn("Tracking error", err);
