@@ -6,7 +6,12 @@
     --gold: #ffcc00;
 }
 
-* { box-sizing: border-box; user-select: none; }
+* {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
 
 body, html {
     margin: 0;
@@ -15,7 +20,7 @@ body, html {
     height: 100%;
     overflow: hidden;
     background: #000;
-    font-family: 'Poppins', 'Segoe UI', sans-serif;
+    font-family: 'Inter', 'Poppins', 'Segoe UI', sans-serif;
 }
 
 #game-frame {
@@ -28,7 +33,6 @@ body, html {
     z-index: 1;
 }
 
-/* Mini logo */
 #mini-logo {
     position: fixed;
     top: 100px;
@@ -46,19 +50,17 @@ body, html {
 }
 #mini-logo img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Main panel */
 #main-box {
     position: fixed;
     top: 120px;
     left: 30px;
-    width: 280px;
+    width: 290px;
     background: var(--bg);
     backdrop-filter: blur(16px);
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 28px;
     z-index: 10000;
     box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-    transition: all 0.2s;
 }
 
 #drag-handle {
@@ -101,9 +103,8 @@ body, html {
 
 .inner-content { padding: 16px; text-align: center; }
 
-/* Login / Deposit */
 .label-sm {
-    font-size: 10px;
+    font-size: 11px;
     color: #aaa;
     letter-spacing: 1px;
     margin-bottom: 8px;
@@ -121,7 +122,7 @@ body, html {
     outline: none;
 }
 .check-row {
-    font-size: 10px;
+    font-size: 11px;
     color: #bbb;
     margin-bottom: 16px;
     display: flex;
@@ -132,7 +133,7 @@ body, html {
     width: 100%;
     padding: 12px;
     border-radius: 40px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: bold;
     cursor: pointer;
     margin-bottom: 8px;
@@ -142,21 +143,20 @@ body, html {
 .btn-primary { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent); }
 .btn-gold { background: var(--gold); color: #000; }
 .btn-verify { background: #2c2c3a; color: white; border: 1px solid #4a4a5a; }
-.warn-msg { font-size: 11px; background: #ffcc0022; padding: 8px; border-radius: 20px; color: #ffcc55; margin-bottom: 12px; }
+.warn-msg { font-size: 12px; background: #ffcc0022; padding: 8px; border-radius: 20px; color: #ffcc55; margin-bottom: 12px; }
 
-/* Signal view */
 .period-badge {
-    font-size: 9px;
+    font-size: 10px;
     background: rgba(255,255,255,0.08);
     display: inline-block;
-    padding: 4px 12px;
+    padding: 5px 14px;
     border-radius: 40px;
     color: #ccc;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 #result-text {
-    font-size: 48px;
-    font-weight: 900;
+    font-size: 52px;
+    font-weight: 800;
     background: linear-gradient(135deg, #fff, #ddd);
     -webkit-background-clip: text;
     background-clip: text;
@@ -171,9 +171,9 @@ body, html {
     border-radius: 40px;
     display: inline-block;
     margin-bottom: 12px;
-    font-weight: bold;
+    font-weight: 600;
 }
-.timer-info { font-size: 11px; color: #ddd; margin-top: 6px; }
+.timer-info { font-size: 12px; color: #ddd; margin-top: 6px; font-weight: 500; }
 .progress-bg {
     width: 100%;
     height: 4px;
@@ -188,37 +188,36 @@ body, html {
     background: var(--accent);
     transition: width 0.2s linear;
 }
-#ai-status { font-size: 8px; color: var(--neon-green); margin-top: 8px; }
+#ai-status { font-size: 9px; color: var(--neon-green); margin-top: 8px; font-weight: 500; }
 
-/* Stats grid */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin: 16px 0 12px;
+    gap: 10px;
+    margin: 18px 0 14px;
 }
 .stat-card {
-    background: rgba(255,255,255,0.04);
-    border-radius: 18px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 20px;
     padding: 8px 4px;
     text-align: center;
 }
 .stat-card span {
-    font-size: 9px;
+    font-size: 10px;
     color: #aaa;
     display: block;
+    margin-bottom: 4px;
 }
 .stat-card strong {
-    font-size: 16px;
+    font-size: 18px;
     color: white;
     display: block;
-    margin-top: 4px;
+    font-weight: 700;
 }
 
-/* History table */
 .history-table {
     width: 100%;
-    font-size: 10px;
+    font-size: 11px;
     border-collapse: collapse;
     margin-top: 8px;
 }
@@ -232,12 +231,12 @@ body, html {
     padding: 8px 0;
     border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-.win-badge { color: var(--neon-green); font-weight: bold; }
-.loss-badge { color: var(--loss-red); font-weight: bold; }
+.win-badge { color: var(--neon-green); font-weight: 700; }
+.loss-badge { color: var(--loss-red); font-weight: 700; }
 .footer-note {
-    font-size: 7px;
+    font-size: 8px;
     color: #555;
-    margin-top: 12px;
+    margin-top: 14px;
     text-align: center;
 }
 
