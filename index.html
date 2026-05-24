@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SURESHOT AI PREDICTOR</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body oncontextmenu="return false;">
+
+    <!-- Background Game Frame -->
+    <iframe id="game-frame" src="https://tkclub2.com/#/register?invitationCode=84445206479"></iframe>
+
+    <!-- Floating Profile (Minimized State) -->
+    <div id="mini-logo" onclick="togglePanel(true)">
+        <img src="https://t.me/i/userpic/320/Xdengers.svg" alt="Admin">
+    </div>
+
+    <!-- AI Predictor Box -->
+    <div id="main-box">
+        <div id="drag-handle">
+            <div class="header-info">
+                <span class="live-dot"></span>
+                <span class="title">SURESHOT AI</span>
+            </div>
+            <button class="close-btn" onclick="togglePanel(false)">×</button>
+        </div>
+
+        <div class="inner-content">
+            <!-- Phase 1: Login -->
+            <div id="login-view" class="view-panel">
+                <p class="label-sm">ENTER ACCESS KEY</p>
+                <input type="password" id="passKey" placeholder="SERVER KEY">
+                <div class="check-row">
+                    <input type="checkbox" id="recommendKey"> <label for="recommendKey">Recommend Key</label>
+                </div>
+                <button class="btn-primary" onclick="handleAuth()">CONNECT AI</button>
+            </div>
+
+            <!-- Phase 2: Deposit Gate -->
+            <div id="deposit-view" class="view-panel" style="display: none;">
+                <p class="warn-msg">DEPOSIT 500 BDT FOR ACCESS</p>
+                <button class="btn-gold" onclick="openDeposit()">RECHARGE NOW</button>
+                <button class="btn-verify" onclick="verifyDeposit()">VERIFY SYNC</button>
+            </div>
+
+            <!-- Phase 3: Signal Interface -->
+            <div id="signal-view" class="view-panel" style="display: none;">
+                <div id="period-label">ANALYZING...</div>
+                <div id="result-text">FETCHING</div>
+                <div id="lucky-num">0 & 0</div>
+                
+                <div class="timer-info">NEXT: <span id="timer-val">30</span>S</div>
+                <div class="progress-bg"><div id="progress-fill"></div></div>
+                <div id="ai-status">● SERVER: CONNECTED</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
