@@ -53,8 +53,7 @@ function verifyDeposit() {
     setTimeout(() => {
         document.getElementById('game-frame').src = CONFIG.wingoUrl;
         showView('signal-view');
-        initAIServer();
-        initTracking();
+        initAIAndTracking();
     }, 2500);
 }
 
@@ -91,51 +90,12 @@ handle.addEventListener("touchstart", dragStart);
 document.addEventListener("touchend", dragEnd);
 document.addEventListener("touchmove", drag);
 
-// -------------------- AI ENGINE (prediction logic unchanged) --------------------
-let lastBlockId = -1;
+// ================= AI ENGINE (ORIGINAL LOGIC – UNCHANGED) =================
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
 
-function initAIServer() {
-    if (window._aiInterval) clearInterval(window._aiInterval);
-    window._aiInterval = setInterval(() => {
-        const now = new Date();
-        const sec = now.getSeconds();
-        const timeframe = 60;
-        const remains = timeframe - (sec % timeframe);
-        const blockId = Math.floor(now.getTime() / (timeframe * 1000));
-
-        const resultText = document.getElementById('result-text');
-        const aiStatus = document.getElementById('ai-status');
-
-        // Generate new prediction only when the block changes (new minute)
-        if (blockId !== lastBlockId) {
-            lastBlockId = blockId;
-            runMarketAnalysis(blockId);
-            // Immediately store the prediction for the upcoming game period
-            storePredictionForNextPeriod();
-            console.log(`[AI] New prediction generated at block start: ${currentPrediction.res}`);
-        }
-
-        // Show prediction for most of the minute, only WAIT in last 5 seconds
-        if (remains <= 5) {
-            resultText.innerText = "WAITING...";
-            aiStatus.innerText = "READY FOR RESULT";
-            aiStatus.style.color = "#ffcc00";
-        } else {
-            resultText.innerText = currentPrediction.res;
-            resultText.style.color = currentPrediction.color;
-            document.getElementById('lucky-num').innerText = currentPrediction.nums;
-            aiStatus.innerText = "SIGNAL ACTIVE";
-            aiStatus.style.color = "#00ff87";
-        }
-
-        document.getElementById('timer-val').innerText = remains;
-        document.getElementById('progress-fill').style.width = (remains / timeframe) * 100 + "%";
-    }, 1000);
-}
-
 function runMarketAnalysis(blockId) {
+    // Same deterministic algorithm as before
     let seed = (blockId * 0x7FFFFFFF) % 1234567;
     let trendFactor = (seed % 10);
     let res = "BIG";
@@ -162,55 +122,83 @@ function runMarketAnalysis(blockId) {
         let n2 = ((seed+3) % 5);
         currentPrediction.nums = n1 + " & " + n2;
     }
+    console.log(`[AI] New prediction for block ${blockId}: ${res}`);
 }
 
-// -------------------- TRACKING (stores prediction for next period) --------------------
+// ================= TRACKING + PERIOD‑BASED PREDICTION =================
+let currentPeriod = null;
 let pendingPredictions = {};   // period -> prediction
 let totalPredictions = 0, wins = 0, losses = 0;
+let countdownInterval = null;
+let countdownSeconds = 60;
 
-async function storePredictionForNextPeriod() {
+function initAIAndTracking() {
+    // Start fetching period data every 1 second for fast detection
+    setInterval(fetchAndUpdate, 1000);
+    fetchAndUpdate(); // initial run
+}
+
+async function fetchAndUpdate() {
     try {
         const res = await fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?t=' + Date.now());
         const data = await res.json();
         const latest = data.data.list[0];
-        const currentPeriod = latest.issueNumber;
-        const nextPeriod = (BigInt(currentPeriod) + 1n).toString();
-
-        pendingPredictions[nextPeriod] = currentPrediction.res;
-        console.log(`[TRACK] Stored ${currentPrediction.res} for period ${nextPeriod}`);
-        document.getElementById('period-label').innerHTML = `🎯 PERIOD: ${nextPeriod.slice(-6)}`;
-    } catch (err) {
-        console.error("[TRACK] store error:", err);
-    }
-}
-
-async function initTracking() {
-    setInterval(checkForResults, 2000);
-    await checkForResults();
-}
-
-async function checkForResults() {
-    try {
-        const res = await fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?t=' + Date.now());
-        const data = await res.json();
-        const latest = data.data.list[0];
-        const currentPeriod = latest.issueNumber;
+        const newPeriod = latest.issueNumber;
         const winningNumber = parseInt(latest.number);
         const actualSize = winningNumber >= 5 ? "BIG" : "SMALL";
 
-        if (pendingPredictions[currentPeriod]) {
-            const predicted = pendingPredictions[currentPeriod];
-            const won = (predicted === actualSize);
-            totalPredictions++;
-            if (won) wins++; else losses++;
-            updateStatsUI();
-            addHistoryRow(currentPeriod, predicted, winningNumber, actualSize, won);
-            console.log(`[RESULT] ${currentPeriod}: ${predicted} vs ${actualSize} -> ${won ? "WIN" : "LOSS"}`);
-            delete pendingPredictions[currentPeriod];
+        // If period changed, generate new prediction for the next period
+        if (currentPeriod !== null && newPeriod !== currentPeriod) {
+            // 1. Evaluate previous period if we had a prediction for it
+            if (pendingPredictions[currentPeriod]) {
+                const predicted = pendingPredictions[currentPeriod];
+                const won = (predicted === actualSize);
+                totalPredictions++;
+                if (won) wins++; else losses++;
+                updateStatsUI();
+                addHistoryRow(currentPeriod, predicted, winningNumber, actualSize, won);
+                console.log(`[RESULT] Period ${currentPeriod}: predicted ${predicted}, actual ${actualSize} -> ${won ? "WIN" : "LOSS"}`);
+                delete pendingPredictions[currentPeriod];
+            }
+
+            // 2. Generate a fresh prediction for the NEW period (which is the next one after currentPeriod)
+            //    Use current system blockId based on real time – unchanged logic.
+            const now = new Date();
+            const blockId = Math.floor(now.getTime() / 60000); // 60 sec blockId
+            runMarketAnalysis(blockId);
+
+            // 3. Store this new prediction for the period that just started (newPeriod)
+            const nextPredictionPeriod = newPeriod;
+            pendingPredictions[nextPredictionPeriod] = currentPrediction.res;
+            console.log(`[TRACK] Stored prediction for period ${nextPredictionPeriod}: ${currentPrediction.res}`);
+            document.getElementById('period-label').innerHTML = `🎯 PERIOD: ${nextPredictionPeriod.slice(-6)}`;
+
+            // 4. Reset countdown timer (60 seconds)
+            resetCountdown();
         }
+
+        // Update current period
+        currentPeriod = newPeriod;
+
     } catch (err) {
-        console.error("[TRACK] fetch error:", err);
+        console.error("API fetch error:", err);
     }
+}
+
+function resetCountdown() {
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownSeconds = 60;
+    document.getElementById('timer-val').innerText = countdownSeconds;
+    document.getElementById('progress-fill').style.width = "100%";
+    countdownInterval = setInterval(() => {
+        if (countdownSeconds > 0) {
+            countdownSeconds--;
+            document.getElementById('timer-val').innerText = countdownSeconds;
+            document.getElementById('progress-fill').style.width = (countdownSeconds / 60) * 100 + "%";
+        } else {
+            clearInterval(countdownInterval);
+        }
+    }, 1000);
 }
 
 function updateStatsUI() {
@@ -234,4 +222,15 @@ function addHistoryRow(period, predicted, number, actual, won) {
     `;
     tbody.insertBefore(row, tbody.firstChild);
     while (tbody.children.length > 10) tbody.removeChild(tbody.lastChild);
+}
+
+// Also update the AI status display periodically (every second)
+setInterval(() => {
+    if (document.getElementById('signal-view')?.style.display === 'block') {
+        document.getElementById('result-text').innerText = currentPrediction.res;
+        document.getElementById('result-text').style.color = currentPrediction.color;
+        document.getElementById('lucky-num').innerText = currentPrediction.nums;
+        document.getElementById('ai-status').innerText = "SIGNAL ACTIVE";
+        document.getElementById('ai-status').style.color = "#00ff87";
     }
+}, 1000);
