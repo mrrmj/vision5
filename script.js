@@ -95,7 +95,7 @@ let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
 
 function runMarketAnalysis(blockId) {
-    // Same deterministic algorithm as before
+    // Same deterministic algorithm as your original
     let seed = (blockId * 0x7FFFFFFF) % 1234567;
     let trendFactor = (seed % 10);
     let res = "BIG";
@@ -125,7 +125,7 @@ function runMarketAnalysis(blockId) {
     console.log(`[AI] New prediction for block ${blockId}: ${res}`);
 }
 
-// ================= TRACKING + PERIOD‑BASED PREDICTION =================
+// ================= TRACKING + PERIOD‑BASED PREDICTION (NOW PREDICTS FOR NEXT PERIOD) =================
 let currentPeriod = null;
 let pendingPredictions = {};   // period -> prediction
 let totalPredictions = 0, wins = 0, losses = 0;
@@ -133,9 +133,8 @@ let countdownInterval = null;
 let countdownSeconds = 60;
 
 function initAIAndTracking() {
-    // Start fetching period data every 1 second for fast detection
     setInterval(fetchAndUpdate, 1000);
-    fetchAndUpdate(); // initial run
+    fetchAndUpdate();
 }
 
 async function fetchAndUpdate() {
@@ -147,9 +146,8 @@ async function fetchAndUpdate() {
         const winningNumber = parseInt(latest.number);
         const actualSize = winningNumber >= 5 ? "BIG" : "SMALL";
 
-        // If period changed, generate new prediction for the next period
         if (currentPeriod !== null && newPeriod !== currentPeriod) {
-            // 1. Evaluate previous period if we had a prediction for it
+            // 1. Evaluate any pending prediction for the period that just finished (currentPeriod)
             if (pendingPredictions[currentPeriod]) {
                 const predicted = pendingPredictions[currentPeriod];
                 const won = (predicted === actualSize);
@@ -161,25 +159,21 @@ async function fetchAndUpdate() {
                 delete pendingPredictions[currentPeriod];
             }
 
-            // 2. Generate a fresh prediction for the NEW period (which is the next one after currentPeriod)
-            //    Use current system blockId based on real time – unchanged logic.
+            // 2. Generate a fresh prediction for the NEXT period (newPeriod + 1)
             const now = new Date();
-            const blockId = Math.floor(now.getTime() / 60000); // 60 sec blockId
+            const blockId = Math.floor(now.getTime() / 60000); // unchanged blockId logic
             runMarketAnalysis(blockId);
 
-            // 3. Store this new prediction for the period that just started (newPeriod)
-            const nextPredictionPeriod = newPeriod;
-            pendingPredictions[nextPredictionPeriod] = currentPrediction.res;
-            console.log(`[TRACK] Stored prediction for period ${nextPredictionPeriod}: ${currentPrediction.res}`);
-            document.getElementById('period-label').innerHTML = `🎯 PERIOD: ${nextPredictionPeriod.slice(-6)}`;
+            const nextPeriod = (BigInt(newPeriod) + 1n).toString();
+            pendingPredictions[nextPeriod] = currentPrediction.res;
+            console.log(`[TRACK] Stored prediction for NEXT period ${nextPeriod}: ${currentPrediction.res}`);
+            document.getElementById('period-label').innerHTML = `🎯 PREDICTING PERIOD: ${nextPeriod.slice(-6)}`;
 
-            // 4. Reset countdown timer (60 seconds)
+            // 3. Reset the 60‑second countdown
             resetCountdown();
         }
 
-        // Update current period
         currentPeriod = newPeriod;
-
     } catch (err) {
         console.error("API fetch error:", err);
     }
@@ -224,7 +218,7 @@ function addHistoryRow(period, predicted, number, actual, won) {
     while (tbody.children.length > 10) tbody.removeChild(tbody.lastChild);
 }
 
-// Also update the AI status display periodically (every second)
+// Live UI update (every second)
 setInterval(() => {
     if (document.getElementById('signal-view')?.style.display === 'block') {
         document.getElementById('result-text').innerText = currentPrediction.res;
