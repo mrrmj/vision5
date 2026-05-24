@@ -58,7 +58,7 @@ function verifyDeposit() {
     }, 2500);
 }
 
-// -------------------- DRAG LOGIC (unchanged) --------------------
+// -------------------- DRAG LOGIC --------------------
 const box = document.getElementById("main-box");
 const handle = document.getElementById("drag-handle");
 let active = false, currentX, currentY, initialX, initialY, xOff = 0, yOff = 0;
@@ -91,7 +91,7 @@ handle.addEventListener("touchstart", dragStart);
 document.addEventListener("touchend", dragEnd);
 document.addEventListener("touchmove", drag);
 
-// -------------------- ORIGINAL AI ENGINE (unchanged prediction logic) --------------------
+// -------------------- AI ENGINE (prediction logic unchanged) --------------------
 let lastBlockId = -1;
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
@@ -108,23 +108,28 @@ function initAIServer() {
         const resultText = document.getElementById('result-text');
         const aiStatus = document.getElementById('ai-status');
 
-        if (remains >= 56) {
+        // Generate new prediction only when the block changes (new minute)
+        if (blockId !== lastBlockId) {
+            lastBlockId = blockId;
+            runMarketAnalysis(blockId);
+            // Immediately store the prediction for the upcoming game period
+            storePredictionForNextPeriod();
+            console.log(`[AI] New prediction generated at block start: ${currentPrediction.res}`);
+        }
+
+        // Show prediction for most of the minute, only WAIT in last 5 seconds
+        if (remains <= 5) {
             resultText.innerText = "WAITING...";
-            aiStatus.innerText = "SCANNING TRENDS";
+            aiStatus.innerText = "READY FOR RESULT";
             aiStatus.style.color = "#ffcc00";
         } else {
-            if (blockId !== lastBlockId) {
-                lastBlockId = blockId;
-                runMarketAnalysis(blockId);
-                // When a new prediction is generated, immediately store it for the upcoming period
-                storePredictionForNextPeriod();
-            }
             resultText.innerText = currentPrediction.res;
             resultText.style.color = currentPrediction.color;
             document.getElementById('lucky-num').innerText = currentPrediction.nums;
             aiStatus.innerText = "SIGNAL ACTIVE";
             aiStatus.style.color = "#00ff87";
         }
+
         document.getElementById('timer-val').innerText = remains;
         document.getElementById('progress-fill').style.width = (remains / timeframe) * 100 + "%";
     }, 1000);
@@ -157,38 +162,31 @@ function runMarketAnalysis(blockId) {
         let n2 = ((seed+3) % 5);
         currentPrediction.nums = n1 + " & " + n2;
     }
-    console.log(`[AI] New prediction generated: ${currentPrediction.res} (numbers: ${currentPrediction.nums})`);
 }
 
-// -------------------- FIXED TRACKING (stores prediction for next period) --------------------
-let pendingPredictions = {};   // key = period string, value = prediction (BIG/SMALL)
+// -------------------- TRACKING (stores prediction for next period) --------------------
+let pendingPredictions = {};   // period -> prediction
 let totalPredictions = 0, wins = 0, losses = 0;
-let lastSeenPeriod = null;
 
 async function storePredictionForNextPeriod() {
     try {
-        // Fetch the latest period from the game API
         const res = await fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?t=' + Date.now());
         const data = await res.json();
         const latest = data.data.list[0];
         const currentPeriod = latest.issueNumber;
         const nextPeriod = (BigInt(currentPeriod) + 1n).toString();
 
-        // Store the current AI prediction for that next period (overwrite if already exists)
         pendingPredictions[nextPeriod] = currentPrediction.res;
-        console.log(`[TRACK] Stored prediction for period ${nextPeriod}: ${currentPrediction.res}`);
-
-        // Update the UI to show which period we are predicting
+        console.log(`[TRACK] Stored ${currentPrediction.res} for period ${nextPeriod}`);
         document.getElementById('period-label').innerHTML = `🎯 PERIOD: ${nextPeriod.slice(-6)}`;
     } catch (err) {
-        console.error("[TRACK] Failed to fetch period for storing prediction", err);
+        console.error("[TRACK] store error:", err);
     }
 }
 
 async function initTracking() {
-    // Run every 2 seconds to check for new results
     setInterval(checkForResults, 2000);
-    await checkForResults(); // immediate first check
+    await checkForResults();
 }
 
 async function checkForResults() {
@@ -200,32 +198,18 @@ async function checkForResults() {
         const winningNumber = parseInt(latest.number);
         const actualSize = winningNumber >= 5 ? "BIG" : "SMALL";
 
-        console.log(`[API] Current period: ${currentPeriod}, result: ${winningNumber} (${actualSize})`);
-
-        // If we have a pending prediction for this period, evaluate it
         if (pendingPredictions[currentPeriod]) {
             const predicted = pendingPredictions[currentPeriod];
             const won = (predicted === actualSize);
-
             totalPredictions++;
             if (won) wins++; else losses++;
             updateStatsUI();
             addHistoryRow(currentPeriod, predicted, winningNumber, actualSize, won);
-
-            console.log(`[RESULT] Period ${currentPeriod}: predicted ${predicted}, actual ${actualSize} -> ${won ? "WIN" : "LOSS"}`);
-
-            // Remove the prediction so it's not evaluated again
+            console.log(`[RESULT] ${currentPeriod}: ${predicted} vs ${actualSize} -> ${won ? "WIN" : "LOSS"}`);
             delete pendingPredictions[currentPeriod];
-        } else {
-            console.log(`[TRACK] No pending prediction for period ${currentPeriod}`);
-        }
-
-        // Update the last seen period for reference (not critical)
-        if (lastSeenPeriod !== currentPeriod) {
-            lastSeenPeriod = currentPeriod;
         }
     } catch (err) {
-        console.error("[TRACK] Error fetching results:", err);
+        console.error("[TRACK] fetch error:", err);
     }
 }
 
@@ -233,16 +217,14 @@ function updateStatsUI() {
     document.getElementById('total-pred').innerText = totalPredictions;
     document.getElementById('win-count').innerText = wins;
     document.getElementById('loss-count').innerText = losses;
-    const accuracy = totalPredictions === 0 ? 0 : Math.round((wins / totalPredictions) * 100);
-    document.getElementById('accuracy').innerText = `${accuracy}%`;
+    const acc = totalPredictions === 0 ? 0 : Math.round((wins / totalPredictions) * 100);
+    document.getElementById('accuracy').innerText = `${acc}%`;
 }
 
 function addHistoryRow(period, predicted, number, actual, won) {
     const tbody = document.getElementById('history-body');
     const row = document.createElement('tr');
-    // Color the PRED column based on BIG/SMALL
     const predColor = predicted === 'BIG' ? '#00d2ff' : '#ff44dd';
-    // Color the number based on even/odd (optional)
     const numColor = number % 2 === 0 ? '#ff8888' : '#88ff88';
     row.innerHTML = `
         <td style="color: white;">${period.slice(-4)}</td>
@@ -251,6 +233,5 @@ function addHistoryRow(period, predicted, number, actual, won) {
         <td class="${won ? 'win-badge' : 'loss-badge'}">${won ? 'WIN ✓' : 'LOSS ✗'}</td>
     `;
     tbody.insertBefore(row, tbody.firstChild);
-    // Keep only last 10 rows
     while (tbody.children.length > 10) tbody.removeChild(tbody.lastChild);
-}
+    }
