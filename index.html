@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SURESHOT AI PREDICTOR</title>
+    <title>SURESHOT AI PREDICTOR · 91APP</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body oncontextmenu="return false;">
 
-    <!-- Background Game Frame -->
-    <iframe id="game-frame" src="https://tkclub2.com/#/register?invitationCode=84445206479"></iframe>
+    <!-- Background Game Frame (91APP) -->
+    <iframe id="game-frame" src="https://91appt.com/#/saasLottery/WinGo?gameCode=WinGo_30S&lottery=WinGo"></iframe>
 
-    <!-- Floating Profile (Minimized State) -->
+    <!-- Floating Mini Logo (minimized state) -->
     <div id="mini-logo" onclick="togglePanel(true)">
         <img src="https://t.me/i/userpic/320/Xdengers.svg" alt="Admin">
     </div>
 
-    <!-- AI Predictor Box -->
+    <!-- Main Draggable AI Panel -->
     <div id="main-box">
         <div id="drag-handle">
             <div class="header-info">
@@ -25,9 +25,8 @@
             </div>
             <button class="close-btn" onclick="togglePanel(false)">×</button>
         </div>
-
         <div class="inner-content">
-            <!-- Phase 1: Login -->
+            <!-- Login View -->
             <div id="login-view" class="view-panel">
                 <p class="label-sm">ENTER ACCESS KEY</p>
                 <input type="password" id="passKey" placeholder="SERVER KEY">
@@ -37,19 +36,18 @@
                 <button class="btn-primary" onclick="handleAuth()">CONNECT AI</button>
             </div>
 
-            <!-- Phase 2: Deposit Gate -->
+            <!-- Deposit Gate -->
             <div id="deposit-view" class="view-panel" style="display: none;">
                 <p class="warn-msg">DEPOSIT 500 BDT FOR ACCESS</p>
                 <button class="btn-gold" onclick="openDeposit()">RECHARGE NOW</button>
                 <button class="btn-verify" onclick="verifyDeposit()">VERIFY SYNC</button>
             </div>
 
-            <!-- Phase 3: Signal Interface -->
+            <!-- Signal Interface -->
             <div id="signal-view" class="view-panel" style="display: none;">
                 <div id="period-label">ANALYZING...</div>
                 <div id="result-text">FETCHING</div>
                 <div id="lucky-num">0 & 0</div>
-                
                 <div class="timer-info">NEXT: <span id="timer-val">30</span>S</div>
                 <div class="progress-bg"><div id="progress-fill"></div></div>
                 <div id="ai-status">● SERVER: CONNECTED</div>
