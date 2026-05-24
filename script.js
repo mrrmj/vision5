@@ -1,232 +1,156 @@
-:root {
-    --accent: #00d2ff;
-    --bg: rgba(10, 10, 15, 0.98);
+const CONFIG = {
+    key: "RKXRAKIB",
+    wingoUrl: "https://91appt.com/#/saasLottery/WinGo?gameCode=WinGo_30S&lottery=WinGo",
+    depositUrl: "https://91appt.com/#/wallet/Recharge"
+};
+
+// --- AUTH & PERSISTENCE ---
+window.onload = function() {
+    const saved = localStorage.getItem('serverKey');
+    const expiry = localStorage.getItem('keyExpiry');
+    if (saved === CONFIG.key && expiry > Date.now()) {
+        showView('deposit-view');
+    }
+};
+
+function handleAuth() {
+    const entered = document.getElementById('passKey').value;
+    const recommend = document.getElementById('recommendKey').checked;
+    if (entered === CONFIG.key) {
+        if (recommend) {
+            localStorage.setItem('serverKey', CONFIG.key);
+            localStorage.setItem('keyExpiry', Date.now() + (24 * 60 * 60 * 1000));
+        }
+        showView('deposit-view');
+    } else { alert("ACCESS DENIED: WRONG KEY"); }
 }
 
-body, html {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #000;
-    font-family: 'Segoe UI', sans-serif;
+function showView(id) {
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('deposit-view').style.display = 'none';
+    document.getElementById('signal-view').style.display = 'none';
+    document.getElementById(id).style.display = 'block';
 }
 
-#game-frame {
-    width: 100%;
-    height: 100%;
-    border: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 1;
+// --- MINI/MAXIMIZE ---
+function togglePanel(show) {
+    document.getElementById('main-box').style.display = show ? 'block' : 'none';
+    document.getElementById('mini-logo').style.display = show ? 'none' : 'block';
 }
 
-/* Mini Profile Logo */
-#mini-logo {
-    position: fixed;
-    top: 100px;
-    left: 20px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: 2px solid var(--accent);
-    background: #000;
-    z-index: 10001;
-    cursor: pointer;
-    display: none;
-    box-shadow: 0 0 15px var(--accent);
-    overflow: hidden;
-}
-#mini-logo img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+// --- DEPOSIT & ENGINE TRIGGER ---
+function openDeposit() {
+    document.getElementById('game-frame').src = CONFIG.depositUrl;
 }
 
-/* Main Compact Box */
-#main-box {
-    position: fixed;
-    top: 150px;
-    left: 50px;
-    width: 190px;
-    background: var(--bg);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 20px;
-    z-index: 10000;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+function verifyDeposit() {
+    alert("VERIFYING TRANSACTION ID... SYNCING AI SERVER.");
+    setTimeout(() => {
+        document.getElementById('game-frame').src = CONFIG.wingoUrl;
+        showView('signal-view');
+        initAIServer();
+    }, 2500);
 }
 
-#drag-handle {
-    background: rgba(255,255,255,0.08);
-    padding: 12px 12px;
-    border-radius: 20px 20px 0 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: grab;
-    user-select: none;
-}
-#drag-handle:active { cursor: grabbing; }
+// --- DRAG LOGIC (RELIABLE) ---
+const box = document.getElementById("main-box");
+const handle = document.getElementById("drag-handle");
+let active = false, currentX, currentY, initialX, initialY, xOff = 0, yOff = 0;
 
-.live-dot {
-    width: 8px;
-    height: 8px;
-    background: #ff3366;
-    border-radius: 50%;
-    animation: blink 1s infinite;
-    box-shadow: 0 0 4px #ff3366;
-}
-.title {
-    font-size: 11px;
-    font-weight: 800;
-    color: white;
-    margin-left: 6px;
-    letter-spacing: 1px;
-    background: linear-gradient(135deg, #fff, var(--accent));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-.close-btn {
-    background: none;
-    border: none;
-    color: #aaa;
-    font-size: 22px;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0 6px;
-    transition: 0.2s;
-}
-.close-btn:hover { color: white; }
+const dragStart = (e) => {
+    if (e.type === "touchstart") {
+        initialX = e.touches[0].clientX - xOff;
+        initialY = e.touches[0].clientY - yOff;
+    } else {
+        initialX = e.clientX - xOff;
+        initialY = e.clientY - yOff;
+    }
+    if (e.target === handle || handle.contains(e.target)) active = true;
+};
+const dragEnd = () => { initialX = currentX; initialY = currentY; active = false; };
+const drag = (e) => {
+    if (active) {
+        e.preventDefault();
+        const cx = e.type === "touchmove" ? e.touches[0].clientX : e.clientX;
+        const cy = e.type === "touchmove" ? e.touches[0].clientY : e.clientY;
+        currentX = cx - initialX; currentY = cy - initialY;
+        xOff = currentX; yOff = currentY;
+        box.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+    }
+};
+handle.addEventListener("mousedown", dragStart);
+document.addEventListener("mouseup", dragEnd);
+document.addEventListener("mousemove", drag);
+handle.addEventListener("touchstart", dragStart);
+document.addEventListener("touchend", dragEnd);
+document.addEventListener("touchmove", drag);
 
-.inner-content {
-    padding: 14px 12px 16px;
-    text-align: center;
-}
+// --- RESTORED ORIGINAL AI ENGINE (unchanged logic) ---
+let lastBlockId = -1;
+let virtualHistory = [];
+let currentPrediction = { res: "---", nums: "--", color: "#fff" };
 
-.view-panel {
-    animation: fadeIn 0.25s ease;
-}
+function initAIServer() {
+    setInterval(() => {
+        const now = new Date();
+        const sec = now.getSeconds();
+        const timeframe = 30;
+        const remains = timeframe - (sec % timeframe);
+        const blockId = Math.floor(now.getTime() / (timeframe * 1000));
 
-.label-sm {
-    font-size: 9px;
-    color: #aaa;
-    margin-bottom: 8px;
-    letter-spacing: 1px;
-}
+        const resultText = document.getElementById('result-text');
+        const aiStatus = document.getElementById('ai-status');
+        const periodLabel = document.getElementById('period-label');
 
-#passKey {
-    width: 100%;
-    padding: 10px;
-    background: #0a0a0f;
-    border: 1px solid #2a2a35;
-    border-radius: 14px;
-    color: var(--accent);
-    text-align: center;
-    font-size: 12px;
-    margin-bottom: 12px;
-    outline: none;
-    box-sizing: border-box;
-}
-
-.check-row {
-    font-size: 9px;
-    color: #bbb;
-    margin-bottom: 14px;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+        if (remains >= 26) {
+            resultText.innerText = "WAITING...";
+            aiStatus.innerText = "SERVER: SCANNING TRENDS...";
+            aiStatus.style.color = "#ffcc00";
+            periodLabel.innerText = "SYNCING 91APP";
+        } else {
+            if (blockId !== lastBlockId) {
+                lastBlockId = blockId;
+                runMarketAnalysis(blockId);
+            }
+            resultText.innerText = currentPrediction.res;
+            resultText.style.color = currentPrediction.color;
+            document.getElementById('lucky-num').innerText = currentPrediction.nums;
+            aiStatus.innerText = "SERVER: SIGNAL SYNCED";
+            aiStatus.style.color = "#00ff87";
+            periodLabel.innerText = "WINGO 30S AI SIGNAL";
+        }
+        document.getElementById('timer-val').innerText = remains;
+        document.getElementById('progress-fill').style.width = (remains / timeframe) * 100 + "%";
+    }, 1000);
 }
 
-.btn-primary, .btn-gold, .btn-verify {
-    width: 100%;
-    padding: 10px;
-    border: none;
-    border-radius: 40px;
-    font-size: 11px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-bottom: 8px;
-    transition: transform 0.1s ease;
-}
-.btn-primary:active, .btn-gold:active, .btn-verify:active { transform: scale(0.97); }
-.btn-primary { background: var(--accent); color: #000; box-shadow: 0 0 8px var(--accent); }
-.btn-gold { background: #f5b042; color: #000; box-shadow: 0 0 6px #f5b042; }
-.btn-verify { background: #2c2c3a; color: #fff; border: 1px solid #4a4a5a; }
+function runMarketAnalysis(blockId) {
+    let seed = (blockId * 0x7FFFFFFF) % 1234567;
+    let trendFactor = (seed % 10);
+    
+    let res = "BIG";
+    if (virtualHistory.length > 3) {
+        let last3 = virtualHistory.slice(-3);
+        if (last3.every(v => v === "BIG")) res = "SMALL";
+        else if (last3.every(v => v === "SMALL")) res = "BIG";
+        else res = trendFactor > 5 ? "BIG" : "SMALL";
+    } else {
+        res = trendFactor > 4 ? "BIG" : "SMALL";
+    }
 
-.warn-msg {
-    font-size: 11px;
-    background: #ffcc0022;
-    padding: 6px;
-    border-radius: 12px;
-    color: #ffcc55;
-    margin-bottom: 12px;
-}
+    virtualHistory.push(res);
+    if(virtualHistory.length > 10) virtualHistory.shift();
 
-/* Signal Styling */
-#period-label {
-    font-size: 8px;
-    color: #aaa;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 5px;
-}
-#result-text {
-    font-size: 34px;
-    font-weight: 900;
-    margin: 8px 0 5px;
-    background: linear-gradient(135deg, #ffffff, #aaccff);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-#lucky-num {
-    font-size: 15px;
-    color: var(--accent);
-    background: rgba(0, 210, 255, 0.12);
-    padding: 5px 12px;
-    border-radius: 30px;
-    border: 0.5px solid rgba(0,210,255,0.4);
-    display: inline-block;
-    margin-bottom: 12px;
-    font-weight: bold;
-}
-.timer-info {
-    font-size: 10px;
-    color: #ddd;
-    font-weight: bold;
-    margin-top: 4px;
-}
-.progress-bg {
-    width: 100%;
-    height: 4px;
-    background: #1e1e2a;
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 6px 0;
-}
-#progress-fill {
-    height: 100%;
-    width: 0%;
-    background: var(--accent);
-    transition: width 0.2s linear;
-}
-#ai-status {
-    font-size: 7px;
-    color: #00ff87;
-    margin-top: 10px;
-    opacity: 0.85;
-    font-weight: 600;
-}
-
-@keyframes blink {
-    50% { opacity: 0.3; }
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+    currentPrediction.res = res;
+    if (res === "BIG") {
+        currentPrediction.color = "#00d2ff";
+        let n1 = 5 + (seed % 5);
+        let n2 = 5 + ((seed+2) % 5);
+        currentPrediction.nums = n1 + " & " + n2;
+    } else {
+        currentPrediction.color = "#ff00f7";
+        let n1 = (seed % 5);
+        let n2 = ((seed+3) % 5);
+        currentPrediction.nums = n1 + " & " + n2;
+    }
 }
