@@ -2,7 +2,14 @@ const CONFIG = {
     key: "RKXRAKIB",
     wingoUrl: "https://tgdream19.com/#/saasLottery/WinGo?gameCode=WinGo_30S&lottery=WinGo",
     depositUrl: "https://tgdream19.com/#/wallet/Recharge",
-    historyApiUrl: "https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json"
+    historyApiUrl: "https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json",
+    // --- TIMING ALIGNMENT ---
+    // Set this to the number of seconds from 00:00:00 (local time) when the FIRST period of the day starts.
+    // Example: if first period starts at 06:13:30, then offsetSeconds = 6*3600 + 13*60 + 30 = 22410.
+    // If periods start at a different UTC offset, adjust accordingly.
+    firstPeriodOffsetSeconds: 22410,   // 06:13:30 local time
+    // If you want to use UTC instead, set useUTC: true
+    useUTC: false
 };
 
 // --- AUTH & PERSISTENCE ---
@@ -53,7 +60,7 @@ function verifyDeposit() {
     }, 2500);
 }
 
-// --- DRAG LOGIC (RELIABLE) ---
+// --- DRAG LOGIC (unchanged) ---
 const box = document.getElementById("main-box");
 const handle = document.getElementById("drag-handle");
 let active = false, currentX, currentY, initialX, initialY, xOff = 0, yOff = 0;
@@ -82,7 +89,7 @@ const drag = (e) => {
 handle.addEventListener("mousedown", dragStart); document.addEventListener("mouseup", dragEnd); document.addEventListener("mousemove", drag);
 handle.addEventListener("touchstart", dragStart); document.addEventListener("touchend", dragEnd); document.addEventListener("touchmove", drag);
 
-// --- FIXED AI ENGINE WITH API POLLING & RELIABLE DISPLAY ---
+// ========== TIMING-ACCURATE AI ENGINE (no prediction logic change) ==========
 let lastPeriodId = null;
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
@@ -90,45 +97,65 @@ let currentRemainingSeconds = 30;
 let pollingInterval = null;
 let countdownInterval = null;
 
-function initAIServer() {
-    // Force initial local prediction so display never stays blank
-    updateLocalTimingAndPredict();
-    
-    // Start polling API every 2 seconds
-    if (pollingInterval) clearInterval(pollingInterval);
-    pollingInterval = setInterval(fetchPeriodFromAPI, 2000);
-    
-    // Start countdown display (updates every second)
-    if (countdownInterval) clearInterval(countdownInterval);
-    countdownInterval = setInterval(updateCountdownAndDisplay, 1000);
-}
-
-// Local fallback: predict based on system time (30s blocks from epoch)
-function updateLocalTimingAndPredict() {
-    const now = Date.now();
-    const periodId = Math.floor(now / 30000);
-    const elapsedInPeriod = (now % 30000) / 1000;
-    currentRemainingSeconds = Math.ceil(30 - elapsedInPeriod);
-    if (currentRemainingSeconds <= 0) currentRemainingSeconds = 30;
-    
-    if (periodId !== lastPeriodId) {
-        lastPeriodId = periodId;
-        runMarketAnalysis(periodId);
-        updatePredictionOnScreen();
+// Helper: get current period number and remaining seconds based on configurable offset
+function getLocalPeriodInfo() {
+    const now = new Date();
+    let nowMs = now.getTime();
+    if (!CONFIG.useUTC) {
+        // Use local time by adjusting for timezone offset
+        // We want a number that increments every 30 seconds starting from the configured offset time.
+        // Get milliseconds since midnight local time
+        const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        let msSinceMidnight = nowMs - midnight.getTime();
+        // Apply offset (convert seconds to ms)
+        const offsetMs = CONFIG.firstPeriodOffsetSeconds * 1000;
+        let adjustedMs = msSinceMidnight - offsetMs;
+        if (adjustedMs < 0) adjustedMs += 24 * 3600 * 1000; // wrap to previous day's offset?
+        const periodId = Math.floor(adjustedMs / 30000);
+        const elapsedInPeriod = (adjustedMs % 30000) / 1000;
+        let remaining = 30 - elapsedInPeriod;
+        if (remaining <= 0) remaining = 30;
+        return { periodId, remainingSeconds: Math.ceil(remaining) };
+    } else {
+        // UTC version: use UTC midnight and offset
+        const utcNow = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0);
+        let msSinceUTCMidnight = nowMs - utcNow.getTime();
+        const offsetMs = CONFIG.firstPeriodOffsetSeconds * 1000;
+        let adjustedMs = msSinceUTCMidnight - offsetMs;
+        if (adjustedMs < 0) adjustedMs += 24 * 3600 * 1000;
+        const periodId = Math.floor(adjustedMs / 30000);
+        const elapsedInPeriod = (adjustedMs % 30000) / 1000;
+        let remaining = 30 - elapsedInPeriod;
+        if (remaining <= 0) remaining = 30;
+        return { periodId, remainingSeconds: Math.ceil(remaining) };
     }
 }
 
+// Force prediction based on local time (most reliable)
+function updateFromLocalTiming() {
+    const { periodId, remainingSeconds } = getLocalPeriodInfo();
+    if (periodId !== lastPeriodId) {
+        lastPeriodId = periodId;
+        runMarketAnalysis(periodId);
+        updatePredictionDisplay();
+        console.log(`[SYNC] New period ${periodId} | Remaining ${remainingSeconds}s`);
+    }
+    currentRemainingSeconds = remainingSeconds;
+    updateTimerDisplay();
+}
+
+// API polling – used only for cross-check, but local timing is primary
 async function fetchPeriodFromAPI() {
     try {
         const response = await fetch(CONFIG.historyApiUrl);
         const data = await response.json();
+        console.log("[API] Response:", data); // DEBUG: see actual structure
         
-        // Try to extract current period number and end time (adapt to actual JSON)
-        // Common patterns: data.data.periods[0].periodNo, data.periodId, etc.
+        // Try to extract current period number and end time
         let apiPeriodId = null;
         let apiRemaining = null;
         
-        // Attempt 1: if the API returns a list of periods with number and endTime
+        // Attempt common structures – you can adjust this after checking console output
         if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
             const latest = data.data[0];
             apiPeriodId = latest.periodNo || latest.periodNumber || latest.id;
@@ -136,18 +163,14 @@ async function fetchPeriodFromAPI() {
                 const end = new Date(latest.endTime).getTime();
                 apiRemaining = Math.max(0, Math.floor((end - Date.now()) / 1000));
             }
-        }
-        // Attempt 2: if data is an array directly
-        else if (Array.isArray(data) && data.length > 0) {
+        } else if (Array.isArray(data) && data.length > 0) {
             const latest = data[0];
             apiPeriodId = latest.periodNo || latest.periodNumber || latest.id;
             if (latest.endTime) {
                 const end = new Date(latest.endTime).getTime();
                 apiRemaining = Math.max(0, Math.floor((end - Date.now()) / 1000));
             }
-        }
-        // Attempt 3: if data has a 'periods' array
-        else if (data && data.periods && Array.isArray(data.periods) && data.periods.length > 0) {
+        } else if (data && data.periods && Array.isArray(data.periods) && data.periods.length > 0) {
             const latest = data.periods[0];
             apiPeriodId = latest.periodNo || latest.periodNumber || latest.id;
             if (latest.endTime) {
@@ -156,42 +179,52 @@ async function fetchPeriodFromAPI() {
             }
         }
         
-        if (apiPeriodId !== null && apiPeriodId !== lastPeriodId) {
-            // New period detected from API
-            lastPeriodId = apiPeriodId;
+        // If API gives a clear period ID, we can optionally use it to verify local period.
+        // But to avoid mismatch, we still rely on local timing because offset is configurable.
+        // However, we can adjust local offset if API period differs consistently.
+        if (apiPeriodId !== null) {
+            const localPeriod = getLocalPeriodInfo().periodId;
+            if (apiPeriodId !== localPeriod) {
+                console.warn(`[MISMATCH] API period ${apiPeriodId} vs local ${localPeriod}. You may need to adjust firstPeriodOffsetSeconds.`);
+            } else {
+                console.log(`[OK] API and local periods match: ${apiPeriodId}`);
+            }
+            // Optionally use API remaining time if accurate
             if (apiRemaining !== null && apiRemaining > 0 && apiRemaining <= 30) {
                 currentRemainingSeconds = apiRemaining;
-            } else {
-                // If remaining not provided, default to 30
-                currentRemainingSeconds = 30;
+                updateTimerDisplay();
             }
-            runMarketAnalysis(apiPeriodId);
-            updatePredictionOnScreen();
-        } else if (apiPeriodId !== null && apiRemaining !== null && apiRemaining !== currentRemainingSeconds) {
-            // Same period but remaining time changed – update it
-            currentRemainingSeconds = Math.min(30, Math.max(0, apiRemaining));
-            updateTimerDisplay();
-        } else {
-            // No new period, but fallback to local timing to keep display fresh
-            updateLocalTimingAndPredict();
         }
     } catch (error) {
-        console.warn("API fetch failed, using local timing", error);
-        updateLocalTimingAndPredict();
+        console.warn("[API] Fetch failed, using local timing only", error);
     }
 }
 
-function updateCountdownAndDisplay() {
-    if (currentRemainingSeconds > 0) {
-        currentRemainingSeconds--;
-    } else {
-        // Period expired – force a new fetch and local prediction
-        currentRemainingSeconds = 30;
-        updateLocalTimingAndPredict();
-        fetchPeriodFromAPI(); // re-sync
-    }
-    updateTimerDisplay();
-    updatePredictionOnScreen(); // ensures prediction stays visible
+function initAIServer() {
+    // Immediately set initial prediction
+    updateFromLocalTiming();
+    
+    // Poll API every 3 seconds (less frequent, just for sync check)
+    if (pollingInterval) clearInterval(pollingInterval);
+    pollingInterval = setInterval(() => {
+        fetchPeriodFromAPI();
+        updateFromLocalTiming(); // keep local timing as master
+    }, 3000);
+    
+    // Countdown updates every second
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = setInterval(() => {
+        // Decrement remaining seconds
+        if (currentRemainingSeconds > 0) {
+            currentRemainingSeconds--;
+        } else {
+            // Period expired – refresh from local timing
+            updateFromLocalTiming();
+        }
+        updateTimerDisplay();
+        // Keep prediction visible (no need to change unless new period)
+        updatePredictionDisplay();
+    }, 1000);
 }
 
 function updateTimerDisplay() {
@@ -216,7 +249,7 @@ function updateTimerDisplay() {
     }
 }
 
-function updatePredictionOnScreen() {
+function updatePredictionDisplay() {
     const resultText = document.getElementById('result-text');
     const luckyNum = document.getElementById('lucky-num');
     const periodLabel = document.getElementById('period-label');
