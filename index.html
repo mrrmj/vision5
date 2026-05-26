@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI PREDICTOR · 1MIN ACCURACY</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>SURESHOT AI PREDICTOR</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body oncontextmenu="return false;">
 
-    <iframe id="game-frame" src="https://91appt.com/#/saasLottery/WinGo?gameCode=WinGo_1M&lottery=WinGo"></iframe>
+    <!-- Background Game Frame -->
+    <iframe id="game-frame" src="https://tkclub2.com/#/register?invitationCode=84445206479"></iframe>
 
+    <!-- Floating Profile (Minimized State) -->
     <div id="mini-logo" onclick="togglePanel(true)">
-        <img src="https://t.me/i/userpic/320/Xdengers.svg" alt="AI">
+        <img src="https://t.me/i/userpic/320/Xdengers.svg" alt="Admin">
     </div>
 
+    <!-- AI Predictor Box -->
     <div id="main-box">
         <div id="drag-handle">
             <div class="header-info">
@@ -23,42 +25,34 @@
             </div>
             <button class="close-btn" onclick="togglePanel(false)">×</button>
         </div>
+
         <div class="inner-content">
+            <!-- Phase 1: Login -->
             <div id="login-view" class="view-panel">
-                <p class="label-sm">⚡ ENTER ACCESS KEY</p>
+                <p class="label-sm">ENTER ACCESS KEY</p>
                 <input type="password" id="passKey" placeholder="SERVER KEY">
                 <div class="check-row">
-                    <input type="checkbox" id="recommendKey"> <label for="recommendKey">Remember 24h</label>
+                    <input type="checkbox" id="recommendKey"> <label for="recommendKey">Recommend Key</label>
                 </div>
                 <button class="btn-primary" onclick="handleAuth()">CONNECT AI</button>
             </div>
 
+            <!-- Phase 2: Deposit Gate -->
             <div id="deposit-view" class="view-panel" style="display: none;">
-                <p class="warn-msg">💰 DEPOSIT 500 BDT FOR ACCESS</p>
+                <p class="warn-msg">DEPOSIT 500 BDT FOR ACCESS</p>
                 <button class="btn-gold" onclick="openDeposit()">RECHARGE NOW</button>
-                <button class="btn-verify" onclick="verifyDeposit()">VERIFY & SYNC</button>
+                <button class="btn-verify" onclick="verifyDeposit()">VERIFY SYNC</button>
             </div>
 
+            <!-- Phase 3: Signal Interface -->
             <div id="signal-view" class="view-panel" style="display: none;">
-                <div class="period-badge" id="period-label">📡 PERIOD: --</div>
+                <div id="period-label">ANALYZING...</div>
                 <div id="result-text">FETCHING</div>
                 <div id="lucky-num">0 & 0</div>
-                <div class="timer-info">⏱️ NEXT RESULT IN: <span id="timer-val">60</span>s</div>
+                
+                <div class="timer-info">NEXT: <span id="timer-val">30</span>S</div>
                 <div class="progress-bg"><div id="progress-fill"></div></div>
                 <div id="ai-status">● SERVER: CONNECTED</div>
-
-                <div class="stats-grid">
-                    <div class="stat-card"><span>🎯 TOTAL</span><strong id="total-pred">0</strong></div>
-                    <div class="stat-card"><span>✅ WINS</span><strong id="win-count">0</strong></div>
-                    <div class="stat-card"><span>❌ LOSSES</span><strong id="loss-count">0</strong></div>
-                    <div class="stat-card"><span>📈 ACCURACY</span><strong id="accuracy">0%</strong></div>
-                </div>
-
-                <table class="history-table">
-                    <thead><tr><th>PERIOD</th><th>PRED</th><th>NUM</th><th>RESULT</th></tr></thead>
-                    <tbody id="history-body"></tbody>
-                </table>
-                <p class="footer-note">🔁 Auto‑sync every 2s • Real period matching</p>
             </div>
         </div>
     </div>
