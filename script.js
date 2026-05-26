@@ -5,7 +5,6 @@ const CONFIG = {
 };
 
 // --- TIMING REFERENCE: first period starts at 06:13:30 on 2026-05-26 (local time) ---
-// This aligns the AI's 30-second blocks with the game's actual period numbering.
 const REFERENCE_DATE = new Date(2026, 4, 26, 6, 13, 30); // month 4 = May
 const REFERENCE_MS = REFERENCE_DATE.getTime();
 const PERIOD_MS = 30000; // 30 seconds
@@ -87,7 +86,7 @@ const drag = (e) => {
 handle.addEventListener("mousedown", dragStart); document.addEventListener("mouseup", dragEnd); document.addEventListener("mousemove", drag);
 handle.addEventListener("touchstart", dragStart); document.addEventListener("touchend", dragEnd); document.addEventListener("touchmove", drag);
 
-// --- AI ENGINE (unchanged prediction logic, only timing aligned) ---
+// --- AI ENGINE (unchanged prediction logic, timing aligned to 06:13:30) ---
 let lastBlockId = -1;
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
@@ -95,25 +94,20 @@ let currentPrediction = { res: "---", nums: "--", color: "#fff" };
 function initAIServer() {
     setInterval(() => {
         const nowMs = Date.now();
-        // Time elapsed since reference start (modulo period)
         const elapsed = (nowMs - REFERENCE_MS) % PERIOD_MS;
-        // Remaining seconds in current period (rounded up)
         let remains = Math.ceil((PERIOD_MS - elapsed) / 1000);
         if (remains === 0) remains = 30;
         if (remains > 30) remains = 30;
         
-        // Block ID: increases every period from reference point
         const blockId = Math.floor((nowMs - REFERENCE_MS) / PERIOD_MS);
         
         const resultText = document.getElementById('result-text');
         const aiStatus = document.getElementById('ai-status');
         const periodLabel = document.getElementById('period-label');
         
-        // --- New period detection: run prediction immediately at block start ---
         if (blockId !== lastBlockId) {
             lastBlockId = blockId;
             runMarketAnalysis(blockId);
-            // Update display with fresh prediction
             resultText.innerText = currentPrediction.res;
             resultText.style.color = currentPrediction.color;
             document.getElementById('lucky-num').innerHTML = currentPrediction.nums;
@@ -122,17 +116,14 @@ function initAIServer() {
             periodLabel.innerText = "WINGO 30S AI SIGNAL";
         }
         
-        // Always show current prediction
         resultText.innerText = currentPrediction.res;
         resultText.style.color = currentPrediction.color;
         document.getElementById('lucky-num').innerHTML = currentPrediction.nums;
         
-        // Update countdown timer and progress bar
         document.getElementById('timer-val').innerText = remains;
         const progressPercent = ((PERIOD_MS - elapsed) / PERIOD_MS) * 100;
         document.getElementById('progress-fill').style.width = progressPercent + "%";
         
-        // Optional status for final seconds
         if (remains <= 3) {
             aiStatus.innerText = "● FINAL SECONDS...";
             aiStatus.style.color = "#ffaa00";
