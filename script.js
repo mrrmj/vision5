@@ -1,13 +1,9 @@
 const CONFIG = {
     key: "RKXRAKIB",
     wingoUrl: "https://tgdream19.com/#/saasLottery/WinGo?gameCode=WinGo_30S&lottery=WinGo",
-    depositUrl: "https://tgdream19.com/#/wallet/Recharge"
+    depositUrl: "https://tgdream19.com/#/wallet/Recharge",
+    historyApiUrl: "https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json"
 };
-
-// --- TIMING REFERENCE: first period starts at 06:13:30 on 2026-05-26 (local time) ---
-const REFERENCE_DATE = new Date(2026, 4, 26, 6, 13, 30); // month 4 = May
-const REFERENCE_MS = REFERENCE_DATE.getTime();
-const PERIOD_MS = 30000; // 30 seconds
 
 // --- AUTH & PERSISTENCE ---
 window.onload = function() {
@@ -86,52 +82,144 @@ const drag = (e) => {
 handle.addEventListener("mousedown", dragStart); document.addEventListener("mouseup", dragEnd); document.addEventListener("mousemove", drag);
 handle.addEventListener("touchstart", dragStart); document.addEventListener("touchend", dragEnd); document.addEventListener("touchmove", drag);
 
-// --- AI ENGINE (unchanged prediction logic, timing aligned to 06:13:30) ---
+// --- UPDATED AI ENGINE WITH API POLLING ---
 let lastBlockId = -1;
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
+let currentPeriodRemaining = 30;
+let nextPeriodTimestamp = null;
+let pollingInterval = null;
+let countdownInterval = null;
 
 function initAIServer() {
-    setInterval(() => {
-        const nowMs = Date.now();
-        const elapsed = (nowMs - REFERENCE_MS) % PERIOD_MS;
-        let remains = Math.ceil((PERIOD_MS - elapsed) / 1000);
-        if (remains === 0) remains = 30;
-        if (remains > 30) remains = 30;
+    // Start polling the API every 2 seconds
+    if (pollingInterval) clearInterval(pollingInterval);
+    pollingInterval = setInterval(fetchPeriodData, 2000);
+    
+    // Start the countdown display
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = setInterval(updateCountdownDisplay, 1000);
+    
+    // Initial fetch
+    fetchPeriodData();
+}
+
+async function fetchPeriodData() {
+    try {
+        const response = await fetch(CONFIG.historyApiUrl);
+        const data = await response.json();
         
-        const blockId = Math.floor((nowMs - REFERENCE_MS) / PERIOD_MS);
+        // Parse the API response to get current period info
+        // This structure is an assumption based on common patterns
+        // Adjust the parsing logic based on the actual API response structure
+        let currentPeriodNumber = null;
+        let currentPeriodEndTime = null;
         
-        const resultText = document.getElementById('result-text');
-        const aiStatus = document.getElementById('ai-status');
-        const periodLabel = document.getElementById('period-label');
-        
-        if (blockId !== lastBlockId) {
-            lastBlockId = blockId;
-            runMarketAnalysis(blockId);
-            resultText.innerText = currentPrediction.res;
-            resultText.style.color = currentPrediction.color;
-            document.getElementById('lucky-num').innerHTML = currentPrediction.nums;
-            aiStatus.innerText = "SERVER: SIGNAL SYNCED";
-            aiStatus.style.color = "#00ff87";
-            periodLabel.innerText = "WINGO 30S AI SIGNAL";
+        // Example parsing logic - MODIFY THIS BASED ON ACTUAL API RESPONSE
+        if (data && data.data && data.data.periods && data.data.periods.length > 0) {
+            const latestPeriod = data.data.periods[0];
+            currentPeriodNumber = latestPeriod.periodNumber;
+            currentPeriodEndTime = latestPeriod.endTime;
+        } else if (data && data.periods && data.periods.length > 0) {
+            const latestPeriod = data.periods[0];
+            currentPeriodNumber = latestPeriod.periodNumber;
+            currentPeriodEndTime = latestPeriod.endTime;
+        } else if (data && data.period) {
+            currentPeriodNumber = data.period.periodNumber;
+            currentPeriodEndTime = data.period.endTime;
         }
         
+        // If we got period info, check if it's a new period
+        if (currentPeriodNumber !== null && currentPeriodNumber !== lastBlockId) {
+            // New period detected!
+            lastBlockId = currentPeriodNumber;
+            
+            // Calculate remaining time if end time is provided
+            if (currentPeriodEndTime) {
+                const endTime = new Date(currentPeriodEndTime).getTime();
+                const now = Date.now();
+                currentPeriodRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
+            } else {
+                // Default to 30 seconds if no end time provided
+                currentPeriodRemaining = 30;
+            }
+            
+            // Generate new prediction using original logic
+            runMarketAnalysis(currentPeriodNumber);
+            
+            // Update the display immediately
+            updatePredictionDisplay();
+        }
+    } catch (error) {
+        console.error("Error fetching period data:", error);
+        // Fallback to local time-based timing if API fails
+        updateLocalTimeBasedTiming();
+    }
+}
+
+function updateLocalTimeBasedTiming() {
+    const now = new Date();
+    const seconds = now.getSeconds();
+    currentPeriodRemaining = 30 - (seconds % 30);
+    
+    // Check if we need to generate a new prediction based on local time
+    const periodId = Math.floor(now.getTime() / 30000);
+    if (periodId !== lastBlockId) {
+        lastBlockId = periodId;
+        runMarketAnalysis(periodId);
+        updatePredictionDisplay();
+    }
+}
+
+function updateCountdownDisplay() {
+    if (currentPeriodRemaining > 0) {
+        currentPeriodRemaining--;
+    } else {
+        // Period ended, force a refresh of period data
+        fetchPeriodData();
+    }
+    
+    // Update timer display
+    const timerVal = document.getElementById('timer-val');
+    if (timerVal) {
+        timerVal.innerText = currentPeriodRemaining;
+    }
+    
+    // Update progress bar
+    const progressFill = document.getElementById('progress-fill');
+    if (progressFill) {
+        const progressPercent = ((30 - currentPeriodRemaining) / 30) * 100;
+        progressFill.style.width = progressPercent + "%";
+    }
+    
+    // Update status for final seconds
+    const aiStatus = document.getElementById('ai-status');
+    if (aiStatus && currentPeriodRemaining <= 3) {
+        aiStatus.innerText = "● FINAL SECONDS...";
+        aiStatus.style.color = "#ffaa00";
+    } else if (aiStatus) {
+        aiStatus.innerText = "● SERVER: CONNECTED";
+        aiStatus.style.color = "#00ff87";
+    }
+}
+
+function updatePredictionDisplay() {
+    const resultText = document.getElementById('result-text');
+    const luckyNum = document.getElementById('lucky-num');
+    const periodLabel = document.getElementById('period-label');
+    
+    if (resultText) {
         resultText.innerText = currentPrediction.res;
         resultText.style.color = currentPrediction.color;
-        document.getElementById('lucky-num').innerHTML = currentPrediction.nums;
-        
-        document.getElementById('timer-val').innerText = remains;
-        const progressPercent = ((PERIOD_MS - elapsed) / PERIOD_MS) * 100;
-        document.getElementById('progress-fill').style.width = progressPercent + "%";
-        
-        if (remains <= 3) {
-            aiStatus.innerText = "● FINAL SECONDS...";
-            aiStatus.style.color = "#ffaa00";
-        } else {
-            aiStatus.innerText = "● SERVER: CONNECTED";
-            aiStatus.style.color = "#00ff87";
-        }
-    }, 1000);
+    }
+    
+    if (luckyNum) {
+        luckyNum.innerHTML = currentPrediction.nums;
+    }
+    
+    if (periodLabel) {
+        periodLabel.innerText = "WINGO 30S AI SIGNAL";
+    }
 }
 
 // --- ORIGINAL PREDICTION LOGIC (100% UNCHANGED) ---
