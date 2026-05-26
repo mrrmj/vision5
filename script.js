@@ -82,128 +82,141 @@ const drag = (e) => {
 handle.addEventListener("mousedown", dragStart); document.addEventListener("mouseup", dragEnd); document.addEventListener("mousemove", drag);
 handle.addEventListener("touchstart", dragStart); document.addEventListener("touchend", dragEnd); document.addEventListener("touchmove", drag);
 
-// --- UPDATED AI ENGINE WITH API POLLING ---
-let lastBlockId = -1;
+// --- FIXED AI ENGINE WITH API POLLING & RELIABLE DISPLAY ---
+let lastPeriodId = null;
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
-let currentPeriodRemaining = 30;
-let nextPeriodTimestamp = null;
+let currentRemainingSeconds = 30;
 let pollingInterval = null;
 let countdownInterval = null;
 
 function initAIServer() {
-    // Start polling the API every 2 seconds
+    // Force initial local prediction so display never stays blank
+    updateLocalTimingAndPredict();
+    
+    // Start polling API every 2 seconds
     if (pollingInterval) clearInterval(pollingInterval);
-    pollingInterval = setInterval(fetchPeriodData, 2000);
+    pollingInterval = setInterval(fetchPeriodFromAPI, 2000);
     
-    // Start the countdown display
+    // Start countdown display (updates every second)
     if (countdownInterval) clearInterval(countdownInterval);
-    countdownInterval = setInterval(updateCountdownDisplay, 1000);
-    
-    // Initial fetch
-    fetchPeriodData();
+    countdownInterval = setInterval(updateCountdownAndDisplay, 1000);
 }
 
-async function fetchPeriodData() {
+// Local fallback: predict based on system time (30s blocks from epoch)
+function updateLocalTimingAndPredict() {
+    const now = Date.now();
+    const periodId = Math.floor(now / 30000);
+    const elapsedInPeriod = (now % 30000) / 1000;
+    currentRemainingSeconds = Math.ceil(30 - elapsedInPeriod);
+    if (currentRemainingSeconds <= 0) currentRemainingSeconds = 30;
+    
+    if (periodId !== lastPeriodId) {
+        lastPeriodId = periodId;
+        runMarketAnalysis(periodId);
+        updatePredictionOnScreen();
+    }
+}
+
+async function fetchPeriodFromAPI() {
     try {
         const response = await fetch(CONFIG.historyApiUrl);
         const data = await response.json();
         
-        // Parse the API response to get current period info
-        // This structure is an assumption based on common patterns
-        // Adjust the parsing logic based on the actual API response structure
-        let currentPeriodNumber = null;
-        let currentPeriodEndTime = null;
+        // Try to extract current period number and end time (adapt to actual JSON)
+        // Common patterns: data.data.periods[0].periodNo, data.periodId, etc.
+        let apiPeriodId = null;
+        let apiRemaining = null;
         
-        // Example parsing logic - MODIFY THIS BASED ON ACTUAL API RESPONSE
-        if (data && data.data && data.data.periods && data.data.periods.length > 0) {
-            const latestPeriod = data.data.periods[0];
-            currentPeriodNumber = latestPeriod.periodNumber;
-            currentPeriodEndTime = latestPeriod.endTime;
-        } else if (data && data.periods && data.periods.length > 0) {
-            const latestPeriod = data.periods[0];
-            currentPeriodNumber = latestPeriod.periodNumber;
-            currentPeriodEndTime = latestPeriod.endTime;
-        } else if (data && data.period) {
-            currentPeriodNumber = data.period.periodNumber;
-            currentPeriodEndTime = data.period.endTime;
+        // Attempt 1: if the API returns a list of periods with number and endTime
+        if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+            const latest = data.data[0];
+            apiPeriodId = latest.periodNo || latest.periodNumber || latest.id;
+            if (latest.endTime) {
+                const end = new Date(latest.endTime).getTime();
+                apiRemaining = Math.max(0, Math.floor((end - Date.now()) / 1000));
+            }
+        }
+        // Attempt 2: if data is an array directly
+        else if (Array.isArray(data) && data.length > 0) {
+            const latest = data[0];
+            apiPeriodId = latest.periodNo || latest.periodNumber || latest.id;
+            if (latest.endTime) {
+                const end = new Date(latest.endTime).getTime();
+                apiRemaining = Math.max(0, Math.floor((end - Date.now()) / 1000));
+            }
+        }
+        // Attempt 3: if data has a 'periods' array
+        else if (data && data.periods && Array.isArray(data.periods) && data.periods.length > 0) {
+            const latest = data.periods[0];
+            apiPeriodId = latest.periodNo || latest.periodNumber || latest.id;
+            if (latest.endTime) {
+                const end = new Date(latest.endTime).getTime();
+                apiRemaining = Math.max(0, Math.floor((end - Date.now()) / 1000));
+            }
         }
         
-        // If we got period info, check if it's a new period
-        if (currentPeriodNumber !== null && currentPeriodNumber !== lastBlockId) {
-            // New period detected!
-            lastBlockId = currentPeriodNumber;
-            
-            // Calculate remaining time if end time is provided
-            if (currentPeriodEndTime) {
-                const endTime = new Date(currentPeriodEndTime).getTime();
-                const now = Date.now();
-                currentPeriodRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
+        if (apiPeriodId !== null && apiPeriodId !== lastPeriodId) {
+            // New period detected from API
+            lastPeriodId = apiPeriodId;
+            if (apiRemaining !== null && apiRemaining > 0 && apiRemaining <= 30) {
+                currentRemainingSeconds = apiRemaining;
             } else {
-                // Default to 30 seconds if no end time provided
-                currentPeriodRemaining = 30;
+                // If remaining not provided, default to 30
+                currentRemainingSeconds = 30;
             }
-            
-            // Generate new prediction using original logic
-            runMarketAnalysis(currentPeriodNumber);
-            
-            // Update the display immediately
-            updatePredictionDisplay();
+            runMarketAnalysis(apiPeriodId);
+            updatePredictionOnScreen();
+        } else if (apiPeriodId !== null && apiRemaining !== null && apiRemaining !== currentRemainingSeconds) {
+            // Same period but remaining time changed – update it
+            currentRemainingSeconds = Math.min(30, Math.max(0, apiRemaining));
+            updateTimerDisplay();
+        } else {
+            // No new period, but fallback to local timing to keep display fresh
+            updateLocalTimingAndPredict();
         }
     } catch (error) {
-        console.error("Error fetching period data:", error);
-        // Fallback to local time-based timing if API fails
-        updateLocalTimeBasedTiming();
+        console.warn("API fetch failed, using local timing", error);
+        updateLocalTimingAndPredict();
     }
 }
 
-function updateLocalTimeBasedTiming() {
-    const now = new Date();
-    const seconds = now.getSeconds();
-    currentPeriodRemaining = 30 - (seconds % 30);
-    
-    // Check if we need to generate a new prediction based on local time
-    const periodId = Math.floor(now.getTime() / 30000);
-    if (periodId !== lastBlockId) {
-        lastBlockId = periodId;
-        runMarketAnalysis(periodId);
-        updatePredictionDisplay();
-    }
-}
-
-function updateCountdownDisplay() {
-    if (currentPeriodRemaining > 0) {
-        currentPeriodRemaining--;
+function updateCountdownAndDisplay() {
+    if (currentRemainingSeconds > 0) {
+        currentRemainingSeconds--;
     } else {
-        // Period ended, force a refresh of period data
-        fetchPeriodData();
+        // Period expired – force a new fetch and local prediction
+        currentRemainingSeconds = 30;
+        updateLocalTimingAndPredict();
+        fetchPeriodFromAPI(); // re-sync
     }
+    updateTimerDisplay();
+    updatePredictionOnScreen(); // ensures prediction stays visible
+}
+
+function updateTimerDisplay() {
+    const timerSpan = document.getElementById('timer-val');
+    if (timerSpan) timerSpan.innerText = currentRemainingSeconds;
     
-    // Update timer display
-    const timerVal = document.getElementById('timer-val');
-    if (timerVal) {
-        timerVal.innerText = currentPeriodRemaining;
-    }
-    
-    // Update progress bar
     const progressFill = document.getElementById('progress-fill');
     if (progressFill) {
-        const progressPercent = ((30 - currentPeriodRemaining) / 30) * 100;
-        progressFill.style.width = progressPercent + "%";
+        const percent = ((30 - currentRemainingSeconds) / 30) * 100;
+        progressFill.style.width = percent + "%";
     }
     
-    // Update status for final seconds
     const aiStatus = document.getElementById('ai-status');
-    if (aiStatus && currentPeriodRemaining <= 3) {
-        aiStatus.innerText = "● FINAL SECONDS...";
-        aiStatus.style.color = "#ffaa00";
-    } else if (aiStatus) {
-        aiStatus.innerText = "● SERVER: CONNECTED";
-        aiStatus.style.color = "#00ff87";
+    if (aiStatus) {
+        if (currentRemainingSeconds <= 3) {
+            aiStatus.innerText = "● FINAL SECONDS...";
+            aiStatus.style.color = "#ffaa00";
+        } else {
+            aiStatus.innerText = "● SERVER: CONNECTED";
+            aiStatus.style.color = "#00ff87";
+        }
     }
 }
 
-function updatePredictionDisplay() {
+function updatePredictionOnScreen() {
     const resultText = document.getElementById('result-text');
     const luckyNum = document.getElementById('lucky-num');
     const periodLabel = document.getElementById('period-label');
@@ -212,12 +225,10 @@ function updatePredictionDisplay() {
         resultText.innerText = currentPrediction.res;
         resultText.style.color = currentPrediction.color;
     }
-    
     if (luckyNum) {
         luckyNum.innerHTML = currentPrediction.nums;
     }
-    
-    if (periodLabel) {
+    if (periodLabel && periodLabel.innerText !== "WINGO 30S AI SIGNAL") {
         periodLabel.innerText = "WINGO 30S AI SIGNAL";
     }
 }
