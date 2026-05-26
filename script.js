@@ -4,6 +4,12 @@ const CONFIG = {
     depositUrl: "https://tgdream19.com/#/wallet/Recharge"
 };
 
+// --- TIMING REFERENCE: first period starts at 06:13:30 on 2026-05-26 (local time) ---
+// This aligns the AI's 30-second blocks with the game's actual period numbering.
+const REFERENCE_DATE = new Date(2026, 4, 26, 6, 13, 30); // month 4 = May
+const REFERENCE_MS = REFERENCE_DATE.getTime();
+const PERIOD_MS = 30000; // 30 seconds
+
 // --- AUTH & PERSISTENCE ---
 window.onload = function() {
     const saved = localStorage.getItem('serverKey');
@@ -81,52 +87,68 @@ const drag = (e) => {
 handle.addEventListener("mousedown", dragStart); document.addEventListener("mouseup", dragEnd); document.addEventListener("mousemove", drag);
 handle.addEventListener("touchstart", dragStart); document.addEventListener("touchend", dragEnd); document.addEventListener("touchmove", drag);
 
-// --- RESTORED ORIGINAL AI ENGINE ---
+// --- AI ENGINE (unchanged prediction logic, only timing aligned) ---
 let lastBlockId = -1;
 let virtualHistory = [];
 let currentPrediction = { res: "---", nums: "--", color: "#fff" };
 
 function initAIServer() {
     setInterval(() => {
-        const now = new Date();
-        const sec = now.getSeconds();
-        const timeframe = 30; // 30S original
-        const remains = timeframe - (sec % timeframe);
-        const blockId = Math.floor(now.getTime() / (timeframe * 1000));
-
+        const nowMs = Date.now();
+        // Time elapsed since reference start (modulo period)
+        const elapsed = (nowMs - REFERENCE_MS) % PERIOD_MS;
+        // Remaining seconds in current period (rounded up)
+        let remains = Math.ceil((PERIOD_MS - elapsed) / 1000);
+        if (remains === 0) remains = 30;
+        if (remains > 30) remains = 30;
+        
+        // Block ID: increases every period from reference point
+        const blockId = Math.floor((nowMs - REFERENCE_MS) / PERIOD_MS);
+        
         const resultText = document.getElementById('result-text');
         const aiStatus = document.getElementById('ai-status');
         const periodLabel = document.getElementById('period-label');
-
-        if (remains >= 26) {
-            resultText.innerText = "WAITING...";
-            aiStatus.innerText = "SERVER: SCANNING TRENDS...";
-            aiStatus.style.color = "#ffcc00";
-            periodLabel.innerText = "SYNCING TK CLUB";
-        } else {
-            if (blockId !== lastBlockId) {
-                lastBlockId = blockId;
-                runMarketAnalysis(blockId);
-            }
+        
+        // --- New period detection: run prediction immediately at block start ---
+        if (blockId !== lastBlockId) {
+            lastBlockId = blockId;
+            runMarketAnalysis(blockId);
+            // Update display with fresh prediction
             resultText.innerText = currentPrediction.res;
             resultText.style.color = currentPrediction.color;
-            document.getElementById('lucky-num').innerText = currentPrediction.nums;
+            document.getElementById('lucky-num').innerHTML = currentPrediction.nums;
             aiStatus.innerText = "SERVER: SIGNAL SYNCED";
             aiStatus.style.color = "#00ff87";
             periodLabel.innerText = "WINGO 30S AI SIGNAL";
         }
+        
+        // Always show current prediction
+        resultText.innerText = currentPrediction.res;
+        resultText.style.color = currentPrediction.color;
+        document.getElementById('lucky-num').innerHTML = currentPrediction.nums;
+        
+        // Update countdown timer and progress bar
         document.getElementById('timer-val').innerText = remains;
-        document.getElementById('progress-fill').style.width = (remains / timeframe) * 100 + "%";
+        const progressPercent = ((PERIOD_MS - elapsed) / PERIOD_MS) * 100;
+        document.getElementById('progress-fill').style.width = progressPercent + "%";
+        
+        // Optional status for final seconds
+        if (remains <= 3) {
+            aiStatus.innerText = "● FINAL SECONDS...";
+            aiStatus.style.color = "#ffaa00";
+        } else {
+            aiStatus.innerText = "● SERVER: CONNECTED";
+            aiStatus.style.color = "#00ff87";
+        }
     }, 1000);
 }
 
+// --- ORIGINAL PREDICTION LOGIC (100% UNCHANGED) ---
 function runMarketAnalysis(blockId) {
-    // Original Seed & Trend Algorithm
     let seed = (blockId * 0x7FFFFFFF) % 1234567;
     let trendFactor = (seed % 10);
     
     let res = "BIG";
-    // Analyze history to avoid repetitive patterns (User's original logic)
     if (virtualHistory.length > 3) {
         let last3 = virtualHistory.slice(-3);
         if (last3.every(v => v === "BIG")) res = "SMALL";
