@@ -1,0 +1,8 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #0f172a; color: #e2e8f0; font: 16px Arial, sans-serif; }
+.container { max-width: 850px; margin: 40px auto; padding: 24px; }
+h1 { color: #93c5fd; }
+.notice { color: #fbbf24; }
+table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 8px; overflow: hidden; }
+th, td { padding: 12px; border-bottom: 1px solid #334155; text-align: left; }
+th { color: #93c5fd; }

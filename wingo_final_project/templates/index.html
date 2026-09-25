@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WinGo History</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="container">
+    <h1>WinGo-style history</h1>
+    <p class="notice">Educational statistics only. This page does not predict or guarantee outcomes.</p>
+    {% if history %}
+    <table>
+      <thead><tr><th>#</th><th>Number</th><th>Recorded at</th></tr></thead>
+      <tbody>
+      {% for row in history %}
+        <tr><td>{{ loop.index }}</td><td>{{ row['value'] }}</td><td>{{ row['created_at'] }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p>No results recorded.</p>{% endif %}
+  </main>
+</body>
+</html>
